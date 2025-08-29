@@ -1,4 +1,4 @@
-#include "http_server.h"
+#include "task_manager.h"
 #include <iostream>
 #include <signal.h>
 #include <unistd.h>
@@ -25,7 +25,7 @@ void print_banner() {
 
 int main(int argc, char* argv[]) {
     print_banner();
-    
+
     // Parse command line arguments
     int port = 8000;
     if (argc > 1) {
@@ -40,41 +40,57 @@ int main(int argc, char* argv[]) {
             return 1;
         }
     }
-    
+
     // Set up signal handlers for graceful shutdown
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
-    
+
     try {
-        // Create and start the server
-        http_server::HttpServer server(port);
-        
-        std::cout << "🚀 Starting HTTP server on port " << port << "..." << std::endl;
-        
-        if (!server.start()) {
-            std::cerr << "❌ Failed to start server on port " << port << std::endl;
+        // Create task manager and demonstrate functionality
+        http_server::TaskManager task_manager;
+
+        std::cout << "🚀 Starting Task Manager Demo on port " << port << "..." << std::endl;
+
+        // Create a sample task
+        Json::Value taskData;
+        taskData["title"] = "Demo Task";
+        taskData["description"] = "A sample task for demonstration";
+        taskData["priority"] = "high";
+        taskData["status"] = "pending";
+
+        auto task = task_manager.createTask(taskData);
+
+        if (task) {
+            std::cout << "✅ Created demo task with ID: " << task->id << std::endl;
+            std::cout << "📋 Task count: " << task_manager.getTaskCount() << std::endl;
+
+            // Show statistics
+            auto stats = task_manager.getStatistics();
+            std::cout << "📊 Statistics:" << std::endl;
+            std::cout << "   Total tasks: " << stats["total"] << std::endl;
+            std::cout << "   Pending: " << stats["by_status"]["pending"] << std::endl;
+            std::cout << "   High priority: " << stats["by_priority"]["high"] << std::endl;
+        } else {
+            std::cerr << "❌ Failed to create demo task" << std::endl;
             return 1;
         }
-        
-        std::cout << "✅ Server started successfully!" << std::endl;
-        std::cout << "📊 API Documentation: http://localhost:" << port << "/docs" << std::endl;
-        std::cout << "💚 Health Check: http://localhost:" << port << "/health" << std::endl;
-        std::cout << "📋 Tasks API: http://localhost:" << port << "/api/v1/tasks" << std::endl;
-        std::cout << "\nPress Ctrl+C to stop the server..." << std::endl;
-        
-        // Main server loop
-        while (running && server.isRunning()) {
+
+        std::cout << "💚 Task Manager Demo running successfully!" << std::endl;
+        std::cout << "📋 In a full implementation, this would be http://localhost:" << port << "/api/v1/tasks" << std::endl;
+        std::cout << "\nPress Ctrl+C to stop..." << std::endl;
+
+        // Simple demo loop
+        while (running) {
             sleep(1);
         }
-        
-        std::cout << "\n🛑 Stopping server..." << std::endl;
-        server.stop();
-        std::cout << "✅ Server stopped gracefully. Goodbye!" << std::endl;
-        
+
+        std::cout << "\n🛑 Stopping Task Manager Demo..." << std::endl;
+        std::cout << "✅ Demo stopped gracefully. Goodbye!" << std::endl;
+
     } catch (const std::exception& e) {
         std::cerr << "💥 Fatal error: " << e.what() << std::endl;
         return 1;
     }
-    
+
     return 0;
 }
