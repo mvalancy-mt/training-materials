@@ -1,6 +1,7 @@
 """
 Health check endpoints.
 """
+
 from datetime import datetime
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
@@ -37,9 +38,9 @@ async def readiness_check():
     all_healthy = all(check == "ok" for check in checks.values())
 
     return JSONResponse(
-        status_code=status.HTTP_200_OK
-        if all_healthy
-        else status.HTTP_503_SERVICE_UNAVAILABLE,
+        status_code=(
+            status.HTTP_200_OK if all_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
+        ),
         content={
             "status": "ready" if all_healthy else "not_ready",
             "timestamp": datetime.utcnow().isoformat(),
