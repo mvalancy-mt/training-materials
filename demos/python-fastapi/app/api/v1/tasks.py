@@ -8,13 +8,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 
-from app.models.task import (
-    Task,
-    TaskCreate,
-    TaskPriority,
-    TaskStatus,
-    TaskUpdate,
-)
+from app.models.task import Task, TaskCreate, TaskPriority, TaskStatus, TaskUpdate
 
 router = APIRouter()
 
