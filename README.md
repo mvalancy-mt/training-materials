@@ -171,7 +171,16 @@ git push -u origin feature/new-feature
 - Docker Desktop or Docker Engine
 - GitHub CLI (for testing workflows)
 - Language-specific tools (varies by demo)
-- **Pre-commit hooks** (recommended for local secret detection)
+
+### 🚨 MANDATORY SECURITY SETUP
+
+**⚠️ REQUIRED - NO EXCEPTIONS - 2 COMMANDS ONLY:**
+
+```bash
+pip install pre-commit && pre-commit install
+```
+
+**This BLOCKS commits with secrets. See [SETUP.md](SETUP.md) for details.**
 
 ### Quick Start
 
@@ -181,11 +190,13 @@ git push -u origin feature/new-feature
    cd training-materials
    ```
 
-2. **Set up local secret detection** (prevents committing secrets):
+2. **🚨 MANDATORY: Enable secret protection** (choose one):
    ```bash
-   pip install pre-commit
-   pre-commit install
-   pre-commit run --all-files  # Test on existing files
+   # Option A: Manual (2 commands)
+   pip install pre-commit && pre-commit install
+
+   # Option B: Automated (1 command)
+   ./scripts/setup-repo.sh
    ```
 
 3. Start with the Python FastAPI demo (most beginner-friendly):

@@ -1,19 +1,23 @@
 # Pre-Commit Hook Setup
 
-## Overview
-Pre-commit hooks run locally **before** commits are created, preventing secrets and quality issues from entering the repository. This is more efficient than CI/CD detection because issues are caught immediately.
+## 🚨 MANDATORY REQUIREMENT
 
-## Quick Setup
+**⚠️ This setup is REQUIRED for ALL repositories - NO EXCEPTIONS**
+
+## Zero-Friction Setup (30 seconds)
 
 ```bash
-# Install pre-commit (one-time setup)
-pip install pre-commit
+# One-time machine setup + per-repo activation
+pip install pre-commit && pre-commit install
+```
 
-# Install hooks for this repository
-pre-commit install
+**That's it!** Secret detection now blocks dangerous commits automatically.
 
-# Test hooks on all files (optional)
-pre-commit run --all-files
+## Alternative: One-Command Setup
+
+```bash
+# Automated setup with verification
+./scripts/setup-repo.sh
 ```
 
 ## What Gets Checked
