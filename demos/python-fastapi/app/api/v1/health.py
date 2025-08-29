@@ -19,8 +19,8 @@ async def health_check():
             "status": "healthy",
             "timestamp": datetime.utcnow().isoformat(),
             "service": "Task Management API",
-            "version": "1.0.0"
-        }
+            "version": "1.0.0",
+        },
     )
 
 
@@ -31,18 +31,20 @@ async def readiness_check():
     checks = {
         "database": "ok",  # Would be actual DB check
         "memory": "ok",
-        "disk": "ok"
+        "disk": "ok",
     }
-    
+
     all_healthy = all(check == "ok" for check in checks.values())
-    
+
     return JSONResponse(
-        status_code=status.HTTP_200_OK if all_healthy else status.HTTP_503_SERVICE_UNAVAILABLE,
+        status_code=status.HTTP_200_OK
+        if all_healthy
+        else status.HTTP_503_SERVICE_UNAVAILABLE,
         content={
             "status": "ready" if all_healthy else "not_ready",
             "timestamp": datetime.utcnow().isoformat(),
-            "checks": checks
-        }
+            "checks": checks,
+        },
     )
 
 
@@ -56,6 +58,6 @@ async def liveness_check():
             "timestamp": datetime.utcnow().isoformat(),
             "uptime_seconds": "N/A",  # Would calculate actual uptime
             "pid": os.getpid(),
-            "python_version": sys.version.split()[0]
-        }
+            "python_version": sys.version.split()[0],
+        },
     )

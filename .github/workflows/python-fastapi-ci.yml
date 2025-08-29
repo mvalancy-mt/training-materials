@@ -43,19 +43,34 @@ jobs:
     
     - name: Check for secrets in code
       run: |
-        # Check for potential hardcoded secrets (but exclude legitimate config patterns)
+        # Advanced secret detection with multiple patterns
         echo "🔍 Scanning for hardcoded secrets..."
         
-        # Look for potential hardcoded secrets but exclude:
-        # - Configuration environment variable patterns (os.getenv, os.environ)
-        # - Development placeholders 
-        # - Variable assignments (self.variable = ...)
-        POTENTIAL_SECRETS=$(grep -r -E "(password|api_key|secret|token).*=.*['\"][^'\"]{10,}" ${{ env.WORKING_DIR }}/app/ --include="*.py" | \
+        # Pattern 1: Traditional secrets (password, api_key, secret, token)
+        BASIC_SECRETS=$(grep -r -E "(password|api_key|secret|token).*=.*['\"][^'\"]{10,}" ${{ env.WORKING_DIR }}/app/ --include="*.py" | \
           grep -v -E "(os\.getenv|os\.environ|self\.|change-in-production|your-|dev-|test-|placeholder|example|demo)" || true)
         
-        if [ -n "$POTENTIAL_SECRETS" ]; then
+        # Pattern 2: Password-like strings with special characters (e.g., "Pass!23", "MySecret@123")
+        PASSWORD_LIKE=$(grep -r -E "(password|secret|key|token).*=.*['\"][^'\"]*[!@#$%^&*()_+=\-\[\]{}|\\:;\"'<>?,./][^'\"]*[0-9]" ${{ env.WORKING_DIR }}/app/ --include="*.py" | \
+          grep -v -E "(os\.getenv|os\.environ|self\.|change-in-production|your-|dev-|test-|placeholder|example|demo)" || true)
+        
+        # Pattern 3: Base64-like encoded strings (common for secrets)
+        BASE64_SECRETS=$(grep -r -E "(password|secret|key|token).*=.*['\"][A-Za-z0-9+/]{20,}[=]{0,2}['\"]" ${{ env.WORKING_DIR }}/app/ --include="*.py" | \
+          grep -v -E "(os\.getenv|os\.environ|self\.|change-in-production|your-|dev-|test-|placeholder|example|demo)" || true)
+        
+        # Pattern 4: JWT tokens or API keys (long alphanumeric strings)
+        TOKEN_LIKE=$(grep -r -E "(jwt|bearer|auth).*['\"][A-Za-z0-9]{32,}['\"]" ${{ env.WORKING_DIR }}/app/ --include="*.py" | \
+          grep -v -E "(os\.getenv|os\.environ|self\.|change-in-production|your-|dev-|test-|placeholder|example|demo)" || true)
+        
+        # Combine all findings
+        ALL_SECRETS="$BASIC_SECRETS$PASSWORD_LIKE$BASE64_SECRETS$TOKEN_LIKE"
+        
+        if [ -n "$ALL_SECRETS" ]; then
           echo "❌ Potential hardcoded secrets found!"
-          echo "$POTENTIAL_SECRETS"
+          [ -n "$BASIC_SECRETS" ] && echo "Basic secrets:" && echo "$BASIC_SECRETS"
+          [ -n "$PASSWORD_LIKE" ] && echo "Password-like patterns:" && echo "$PASSWORD_LIKE"  
+          [ -n "$BASE64_SECRETS" ] && echo "Base64-like secrets:" && echo "$BASE64_SECRETS"
+          [ -n "$TOKEN_LIKE" ] && echo "Token-like patterns:" && echo "$TOKEN_LIKE"
           exit 1
         else
           echo "✅ No hardcoded secrets detected"

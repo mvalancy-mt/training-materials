@@ -21,5 +21,5 @@ def sample_task():
         "description": "This is a test task",
         "status": "pending",
         "priority": "medium",
-        "due_date": "2024-12-31T23:59:59"
+        "due_date": "2024-12-31T23:59:59",
     }
