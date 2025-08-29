@@ -25,30 +25,35 @@ COPY src/ ./src/
 RUN npm run build && \
     npm prune --omit=dev --no-audit --no-fund
 
-# Stage 2: Production Runtime
-FROM gcr.io/distroless/nodejs20-debian12:nonroot AS runtime
+# Stage 2: Production Runtime - Use Node Alpine for minimal attack surface
+FROM node:20-alpine AS runtime
+
+# Security: Install latest security updates and create non-root user
+RUN apk update && apk upgrade && apk add --no-cache dumb-init wget && \
+    addgroup -g 1001 -S nodejs && \
+    adduser -S nodeuser -u 1001 -G nodejs
 
 # Set working directory
 WORKDIR /app
 
 # Copy built application and production dependencies from builder
-COPY --from=builder --chown=nonroot:nonroot /app/dist ./dist
-COPY --from=builder --chown=nonroot:nonroot /app/node_modules ./node_modules
-COPY --from=builder --chown=nonroot:nonroot /app/package.json ./
+COPY --from=builder --chown=nodeuser:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodeuser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodeuser:nodejs /app/package.json ./
 
-# Security: Use distroless base image (no shell, package managers, etc.)
-# Security: Run as non-root user (distroless nonroot user)
-USER nonroot
+# Security: Run as non-root user
+USER nodeuser
 
-# Health check
+# Health check (use wget instead of node to avoid permission issues)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD ["node", "-e", "require('http').get('http://localhost:3000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
 # Expose port (non-privileged port)
 EXPOSE 3000
 
-# Start the application
-CMD ["dist/app.js"]
+# Start the application with dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/app.js"]
 
 # Metadata
 LABEL maintainer="CI/CD Training Team" \
