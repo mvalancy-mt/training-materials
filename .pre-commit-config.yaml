@@ -1,0 +1,54 @@
+# Pre-commit hooks for comprehensive security and code quality
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Advanced Secret Detection (5 patterns)
+  - repo: local
+    hooks:
+      - id: advanced-secret-detection
+        name: Advanced Secret Detection
+        entry: scripts/detect-secrets.sh
+        language: script
+        files: .
+        exclude: |
+          (?x)(
+            \.git/.*|
+            \.pre-commit-config\.yaml|
+            scripts/detect-secrets\.sh|
+            \.github/workflows/.*\.yml
+          )
+        verbose: true
+
+  # Built-in security hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: detect-private-key
+        name: Detect Private Keys
+      - id: check-yaml
+        name: Check YAML Syntax
+      - id: check-json
+        name: Check JSON Syntax
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+      - id: end-of-file-fixer
+        name: Fix End of Files
+
+  # Python-specific hooks
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        name: Format Python Code
+        files: ^demos/python-.*\.py$
+
+  # Bandit security scanner for Python
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        name: Python Security Analysis
+        files: ^demos/python-.*\.py$
+        exclude: test_.*\.py$
+        args: [-r, --format, txt, --severity-level, medium]
