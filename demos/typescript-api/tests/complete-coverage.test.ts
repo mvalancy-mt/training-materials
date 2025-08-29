@@ -10,7 +10,6 @@ afterAll((done) => {
 });
 
 describe('Complete Coverage Test Suite', () => {
-
   describe('Full Application Flow', () => {
     it('should handle complete task lifecycle with 100% coverage', async () => {
       // Test health endpoints first (allow for potential degraded state)
@@ -24,14 +23,12 @@ describe('Complete Coverage Test Suite', () => {
       expect(readyResponse.status).toBe(200);
 
       // Create task with all fields
-      const createResponse = await request(app)
-        .post('/api/v1/tasks')
-        .send({
-          title: 'Complete Test Task',
-          description: 'Full coverage test',
-          priority: 'high',
-          dueDate: '2024-12-31T23:59:59.000Z'
-        });
+      const createResponse = await request(app).post('/api/v1/tasks').send({
+        title: 'Complete Test Task',
+        description: 'Full coverage test',
+        priority: 'high',
+        dueDate: '2024-12-31T23:59:59.000Z',
+      });
 
       expect(createResponse.status).toBe(201);
       const taskId = createResponse.body.data.id;
@@ -54,13 +51,11 @@ describe('Complete Coverage Test Suite', () => {
       expect(priorityFilterResponse.status).toBe(200);
 
       // Test update
-      const updateResponse = await request(app)
-        .put(`/api/v1/tasks/${taskId}`)
-        .send({
-          title: 'Updated Task',
-          status: 'in-progress',
-          priority: 'critical'
-        });
+      const updateResponse = await request(app).put(`/api/v1/tasks/${taskId}`).send({
+        title: 'Updated Task',
+        status: 'in-progress',
+        priority: 'critical',
+      });
       expect(updateResponse.status).toBe(200);
 
       // Test delete
@@ -74,10 +69,7 @@ describe('Complete Coverage Test Suite', () => {
 
     it('should handle all validation scenarios', async () => {
       // Empty title
-      await request(app)
-        .post('/api/v1/tasks')
-        .send({ title: '', priority: 'medium' })
-        .expect(400);
+      await request(app).post('/api/v1/tasks').send({ title: '', priority: 'medium' }).expect(400);
 
       // Invalid priority
       await request(app)
@@ -97,7 +89,7 @@ describe('Complete Coverage Test Suite', () => {
         .send({
           title: 'Valid Title',
           description: 'B'.repeat(1001),
-          priority: 'medium'
+          priority: 'medium',
         })
         .expect(400);
     });
@@ -106,8 +98,10 @@ describe('Complete Coverage Test Suite', () => {
       const nonExistentId = 'non-existent-id';
 
       await request(app).get(`/api/v1/tasks/${nonExistentId}`).expect(404);
-      await request(app).put(`/api/v1/tasks/${nonExistentId}`)
-        .send({ title: 'Updated' }).expect(404);
+      await request(app)
+        .put(`/api/v1/tasks/${nonExistentId}`)
+        .send({ title: 'Updated' })
+        .expect(404);
       await request(app).delete(`/api/v1/tasks/${nonExistentId}`).expect(404);
     });
 
@@ -149,7 +143,7 @@ describe('Complete Coverage Test Suite', () => {
         title: 'Task 2',
         priority: 'low',
         description: 'Test description',
-        dueDate: '2024-12-31T23:59:59.000Z'
+        dueDate: '2024-12-31T23:59:59.000Z',
       });
 
       expect(model.getTaskCount()).toBe(2);
@@ -162,7 +156,7 @@ describe('Complete Coverage Test Suite', () => {
         title: 'Updated Task 1',
         status: 'completed',
         priority: 'critical',
-        description: 'Updated description'
+        description: 'Updated description',
       });
 
       expect(updated?.title).toBe('Updated Task 1');
@@ -209,7 +203,7 @@ describe('Complete Coverage Test Suite', () => {
       const mockReq: any = { params: {} };
       const mockRes: any = {
         status: jest.fn().mockReturnThis(),
-        json: jest.fn()
+        json: jest.fn(),
       };
 
       // Test all methods that require ID
@@ -227,7 +221,7 @@ describe('Complete Coverage Test Suite', () => {
       const mockReq: any = { body: { title: 'Test', priority: 'medium' } };
       const mockRes: any = {
         status: jest.fn().mockReturnThis(),
-        json: jest.fn()
+        json: jest.fn(),
       };
 
       // Mock the model to throw an error
@@ -240,7 +234,7 @@ describe('Complete Coverage Test Suite', () => {
       expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal server error',
       });
 
       // Restore
@@ -270,7 +264,7 @@ describe('Complete Coverage Test Suite', () => {
       const mockReq: any = {};
       const mockRes: any = {
         status: jest.fn().mockReturnThis(),
-        json: jest.fn()
+        json: jest.fn(),
       };
 
       // Mock checkHealth to throw
@@ -291,7 +285,7 @@ describe('Complete Coverage Test Suite', () => {
         status: jest.fn().mockImplementation(() => {
           throw new Error('Response error');
         }),
-        json: jest.fn()
+        json: jest.fn(),
       };
 
       try {
@@ -325,10 +319,15 @@ describe('Complete Coverage Test Suite', () => {
         logServerStartup(testPort);
 
         // Verify the console.log calls were made with the exact messages
-        expect(mockLog).toHaveBeenCalledWith(`🚀 TypeScript API server running on port ${testPort}`);
-        expect(mockLog).toHaveBeenCalledWith(`📊 Health check: http://localhost:${testPort}/health`);
-        expect(mockLog).toHaveBeenCalledWith(`🎯 API endpoints: http://localhost:${testPort}/api/v1/tasks`);
-
+        expect(mockLog).toHaveBeenCalledWith(
+          `🚀 TypeScript API server running on port ${testPort}`
+        );
+        expect(mockLog).toHaveBeenCalledWith(
+          `📊 Health check: http://localhost:${testPort}/health`
+        );
+        expect(mockLog).toHaveBeenCalledWith(
+          `🎯 API endpoints: http://localhost:${testPort}/api/v1/tasks`
+        );
       } finally {
         // Restore everything
         console.log = originalConsoleLog;
@@ -336,17 +335,16 @@ describe('Complete Coverage Test Suite', () => {
       }
     });
 
-
     it('should test health status degraded condition', async () => {
       const healthChecker = new HealthChecker();
 
       // Mock memory usage to trigger degraded status
       const originalMemoryUsage = process.memoryUsage;
       (process as any).memoryUsage = jest.fn().mockReturnValue({
-        heapUsed: 80 * 1024 * 1024,   // 80MB used
+        heapUsed: 80 * 1024 * 1024, // 80MB used
         heapTotal: 100 * 1024 * 1024, // 100MB total (80% = degraded)
         external: 0,
-        rss: 100 * 1024 * 1024
+        rss: 100 * 1024 * 1024,
       });
 
       const health = await healthChecker.checkHealth();
@@ -362,10 +360,10 @@ describe('Complete Coverage Test Suite', () => {
       // Mock memory usage to trigger unhealthy status (>90%)
       const originalMemoryUsage = process.memoryUsage;
       (process as any).memoryUsage = jest.fn().mockReturnValue({
-        heapUsed: 95 * 1024 * 1024,   // 95MB used
+        heapUsed: 95 * 1024 * 1024, // 95MB used
         heapTotal: 100 * 1024 * 1024, // 100MB total (95% = unhealthy)
         external: 0,
-        rss: 100 * 1024 * 1024
+        rss: 100 * 1024 * 1024,
       });
 
       const health = await healthChecker.checkHealth();
@@ -381,14 +379,14 @@ describe('Complete Coverage Test Suite', () => {
       // Create a task first for testing
       const task = controller.getTaskModel().createTask({
         title: 'Test Task',
-        priority: 'medium'
+        priority: 'medium',
       });
 
       // Test getAllTasks error handling
       const mockReq1: any = { query: {} };
       const mockRes1: any = {
         json: jest.fn(),
-        status: jest.fn().mockReturnThis()
+        status: jest.fn().mockReturnThis(),
       };
 
       // Mock model to throw error
@@ -407,7 +405,7 @@ describe('Complete Coverage Test Suite', () => {
       const mockReq2: any = { params: { id: 'valid-id' } };
       const mockRes2: any = {
         json: jest.fn(),
-        status: jest.fn().mockReturnThis()
+        status: jest.fn().mockReturnThis(),
       };
 
       const originalGetTaskById = controller.getTaskModel().getTaskById;
@@ -424,11 +422,11 @@ describe('Complete Coverage Test Suite', () => {
       // Test updateTask error handling
       const mockReq3: any = {
         params: { id: task.id },
-        body: { title: 'Updated' }
+        body: { title: 'Updated' },
       };
       const mockRes3: any = {
         json: jest.fn(),
-        status: jest.fn().mockReturnThis()
+        status: jest.fn().mockReturnThis(),
       };
 
       const originalUpdateTask = controller.getTaskModel().updateTask;
@@ -446,7 +444,7 @@ describe('Complete Coverage Test Suite', () => {
       const mockReq4: any = { params: { id: task.id } };
       const mockRes4: any = {
         json: jest.fn(),
-        status: jest.fn().mockReturnThis()
+        status: jest.fn().mockReturnThis(),
       };
 
       const originalDeleteTask = controller.getTaskModel().deleteTask;
@@ -464,7 +462,7 @@ describe('Complete Coverage Test Suite', () => {
       const mockReq5: any = {};
       const mockRes5: any = {
         json: jest.fn(),
-        status: jest.fn().mockReturnThis()
+        status: jest.fn().mockReturnThis(),
       };
 
       controller.getTaskModel().getAllTasks = jest.fn(() => {
@@ -486,7 +484,7 @@ describe('Complete Coverage Test Suite', () => {
 
       // Handle potential rate limiting
       if (createResponse.status === 429) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       // Test with invalid status and priority (should be ignored gracefully)
@@ -494,8 +492,10 @@ describe('Complete Coverage Test Suite', () => {
 
       // If we get rate limited, wait and retry
       if (response.status === 429) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const retryResponse = await request(app).get('/api/v1/tasks?status=invalid&priority=invalid');
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const retryResponse = await request(app).get(
+          '/api/v1/tasks?status=invalid&priority=invalid'
+        );
         expect(retryResponse.status).toBe(200);
       } else {
         expect(response.status).toBe(200);
@@ -512,7 +512,7 @@ describe('Complete Coverage Test Suite', () => {
       // Handle potential rate limiting from previous tests
       if (createResponse.status === 429) {
         // Wait and retry
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         const retryResponse = await request(app)
           .post('/api/v1/tasks')
           .send({ title: 'Test Task', priority: 'medium' });
@@ -521,12 +521,10 @@ describe('Complete Coverage Test Suite', () => {
         const taskId = retryResponse.body.data.id;
 
         // Test validation error in updateTask with invalid priority
-        const response = await request(app)
-          .put(`/api/v1/tasks/${taskId}`)
-          .send({
-            title: 'Valid Title',
-            priority: 'invalid-priority-value' // This should trigger Zod validation error
-          });
+        const response = await request(app).put(`/api/v1/tasks/${taskId}`).send({
+          title: 'Valid Title',
+          priority: 'invalid-priority-value', // This should trigger Zod validation error
+        });
 
         expect(response.status).toBe(400);
         expect(response.body.success).toBe(false);
@@ -537,12 +535,10 @@ describe('Complete Coverage Test Suite', () => {
         const taskId = createResponse.body.data.id;
 
         // Test validation error in updateTask with invalid priority
-        const response = await request(app)
-          .put(`/api/v1/tasks/${taskId}`)
-          .send({
-            title: 'Valid Title',
-            priority: 'invalid-priority-value' // This should trigger Zod validation error
-          });
+        const response = await request(app).put(`/api/v1/tasks/${taskId}`).send({
+          title: 'Valid Title',
+          priority: 'invalid-priority-value', // This should trigger Zod validation error
+        });
 
         expect(response.status).toBe(400);
         expect(response.body.success).toBe(false);
@@ -550,7 +546,6 @@ describe('Complete Coverage Test Suite', () => {
         expect(response.body.details).toBeDefined();
       }
     });
-
   });
 
   describe('Error Handler Coverage', () => {
@@ -584,7 +579,7 @@ describe('Complete Coverage Test Suite', () => {
           expect(response.body).toMatchObject({
             success: false,
             error: 'Too many requests, please try again later',
-            retryAfter: expect.any(Number)
+            retryAfter: expect.any(Number),
           });
           break;
         }
