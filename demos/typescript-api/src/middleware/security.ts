@@ -20,7 +20,7 @@ export const securityMiddleware = [
     },
   }),
   cors({
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+    origin: process.env['CORS_ORIGIN']?.split(',') || ['http://localhost:3000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -35,7 +35,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
     const duration = Date.now() - start;
     const logLevel = res.statusCode >= 400 ? 'error' : 'info';
 
-    if (process.env.NODE_ENV !== 'test') {
+    if (process.env['NODE_ENV'] !== 'test') {
       console.log(`${logLevel.toUpperCase()}: ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
     }
   });

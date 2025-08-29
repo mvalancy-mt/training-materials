@@ -65,7 +65,10 @@ export class TaskModel {
 
     const updated: Task = {
       ...existing,
-      ...updates,
+      ...(updates.title !== undefined && { title: updates.title }),
+      ...(updates.description !== undefined && { description: updates.description }),
+      ...(updates.priority !== undefined && { priority: updates.priority }),
+      ...(updates.status !== undefined && { status: updates.status }),
       updatedAt: new Date(),
       dueDate: updates.dueDate ? new Date(updates.dueDate) : existing.dueDate,
     };

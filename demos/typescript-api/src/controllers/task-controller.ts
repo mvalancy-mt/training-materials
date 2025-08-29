@@ -71,6 +71,15 @@ export class TaskController {
   getTaskById = (req: Request, res: Response): void => {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Task ID is required',
+        });
+        return;
+      }
+
       const task = this.taskModel.getTaskById(id);
 
       if (!task) {
@@ -96,8 +105,16 @@ export class TaskController {
   updateTask = (req: Request, res: Response): void => {
     try {
       const { id } = req.params;
-      const validatedData = UpdateTaskSchema.parse(req.body);
 
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Task ID is required',
+        });
+        return;
+      }
+
+      const validatedData = UpdateTaskSchema.parse(req.body);
       const updatedTask = this.taskModel.updateTask(id, validatedData);
 
       if (!updatedTask) {
@@ -132,6 +149,15 @@ export class TaskController {
   deleteTask = (req: Request, res: Response): void => {
     try {
       const { id } = req.params;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Task ID is required',
+        });
+        return;
+      }
+
       const deleted = this.taskModel.deleteTask(id);
 
       if (!deleted) {
@@ -151,7 +177,7 @@ export class TaskController {
     }
   };
 
-  getTaskStats = (req: Request, res: Response): void => {
+  getTaskStats = (_req: Request, res: Response): void => {
     try {
       const allTasks = this.taskModel.getAllTasks();
 

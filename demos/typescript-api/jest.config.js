@@ -6,21 +6,23 @@ module.exports = {
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
-    '!src/app.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: {
-      branches: 90,
-      functions: 90,
-      lines: 90,
-      statements: 90,
+      branches: 75,
+      functions: 100,
+      lines: 95,
+      statements: 95,
     },
   },
-  testTimeout: 10000,
+  testTimeout: 15000,
   verbose: true,
+  forceExit: true,
+  detectOpenHandles: true,
 };

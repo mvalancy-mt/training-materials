@@ -46,12 +46,12 @@ export class HealthChecker {
       timestamp: new Date().toISOString(),
       uptime,
       version: this.version,
-      environment: process.env.NODE_ENV || 'development',
+      environment: process.env['NODE_ENV'] || 'development',
       memory: memoryInfo,
     };
   }
 
-  healthEndpoint = async (req: Request, res: Response): Promise<void> => {
+  healthEndpoint = async (_req: Request, res: Response): Promise<void> => {
     try {
       const health = await this.checkHealth();
       const statusCode = health.status === 'healthy' ? 200 :
@@ -73,7 +73,7 @@ export class HealthChecker {
     }
   };
 
-  readinessEndpoint = async (req: Request, res: Response): Promise<void> => {
+  readinessEndpoint = async (_req: Request, res: Response): Promise<void> => {
     try {
       res.status(200).json({
         success: true,

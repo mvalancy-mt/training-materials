@@ -8,7 +8,7 @@ import { errorHandler, notFoundHandler } from './middleware/error-handler';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const port = process.env['PORT'] ? parseInt(process.env['PORT'], 10) : 3000;
 
 const taskController = new TaskController();
 const healthChecker = new HealthChecker('1.0.0');
@@ -38,7 +38,7 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 const server = app.listen(port, '0.0.0.0', () => {
-  if (process.env.NODE_ENV !== 'test') {
+  if (process.env['NODE_ENV'] !== 'test') {
     console.log(`🚀 TypeScript API server running on port ${port}`);
     console.log(`📊 Health check: http://localhost:${port}/health`);
     console.log(`🎯 API endpoints: http://localhost:${port}/api/v1/tasks`);
