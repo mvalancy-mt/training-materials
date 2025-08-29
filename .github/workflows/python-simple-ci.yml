@@ -61,24 +61,29 @@ jobs:
         # Pattern 1: Basic hardcoded secrets (avoid legitimate config patterns)
         BASIC_SECRETS=$(grep -r -E "(password|secret|key|token|api_key).*=.*['\"][^'\"]{8,}" app/ --include="*.py" | \
           grep -v -E "(os\.getenv|os\.environ|getenv|test|placeholder|example|demo|change-in-production)" || true)
-        BASIC_COUNT=$(echo "$BASIC_SECRETS" | grep -c . || echo "0")
+        BASIC_COUNT=$(echo "$BASIC_SECRETS" | wc -l)
+        [ "$BASIC_SECRETS" = "" ] && BASIC_COUNT=0
         
         # Pattern 2: API Keys (typical formats)
         API_KEYS=$(grep -r -E "(sk-|pk-|ak-|ey-)[a-zA-Z0-9]{20,}" app/ --include="*.py" || true)
-        API_COUNT=$(echo "$API_KEYS" | grep -c . || echo "0")
+        API_COUNT=$(echo "$API_KEYS" | wc -l)
+        [ "$API_KEYS" = "" ] && API_COUNT=0
         
         # Pattern 3: JWT tokens
         JWT_TOKENS=$(grep -r -E "ey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9._-]{10,}" app/ --include="*.py" || true)
-        JWT_COUNT=$(echo "$JWT_TOKENS" | grep -c . || echo "0")
+        JWT_COUNT=$(echo "$JWT_TOKENS" | wc -l)
+        [ "$JWT_TOKENS" = "" ] && JWT_COUNT=0
         
         # Pattern 4: Password-like strings with special chars and numbers  
         PASSWORD_LIKE=$(grep -r -E "(password|secret|key|token).*=.*['\"][^'\"]*[!@#$%^&*()_+=\-\[\]|\\:;\"'<>?,./][^'\"]*[0-9]" app/ --include="*.py" | \
           grep -v -E "(os\.getenv|os\.environ|self\.|getenv|change-in-production|your-|dev-|test-|placeholder|example|demo)" || true)
-        PASSWORD_COUNT=$(echo "$PASSWORD_LIKE" | grep -c . || echo "0")
+        PASSWORD_COUNT=$(echo "$PASSWORD_LIKE" | wc -l)
+        [ "$PASSWORD_LIKE" = "" ] && PASSWORD_COUNT=0
         
         # Pattern 5: AWS/Cloud credentials
         CLOUD_KEYS=$(grep -r -E "(AKIA|ASIA)[A-Z0-9]{16}|[A-Za-z0-9/+=]{40}.*aws" app/ --include="*.py" || true)
-        CLOUD_COUNT=$(echo "$CLOUD_KEYS" | grep -c . || echo "0")
+        CLOUD_COUNT=$(echo "$CLOUD_KEYS" | wc -l)
+        [ "$CLOUD_KEYS" = "" ] && CLOUD_COUNT=0
         
         TOTAL_FOUND=$((BASIC_COUNT + API_COUNT + JWT_COUNT + PASSWORD_COUNT + CLOUD_COUNT))
         
@@ -236,10 +241,16 @@ jobs:
         # Extract test statistics
         if [ -f "test-results.xml" ]; then
           # Parse JUnit XML for test counts
-          TESTS_TOTAL=$(grep -o 'tests="[0-9]*"' test-results.xml | grep -o '[0-9]*')
-          TESTS_FAILED=$(grep -o 'failures="[0-9]*"' test-results.xml | grep -o '[0-9]*')
-          TESTS_ERRORS=$(grep -o 'errors="[0-9]*"' test-results.xml | grep -o '[0-9]*')  
-          TESTS_SKIPPED=$(grep -o 'skipped="[0-9]*"' test-results.xml | grep -o '[0-9]*')
+          TESTS_TOTAL=$(grep -o 'tests="[0-9]*"' test-results.xml | grep -o '[0-9]*' | head -1 || echo "0")
+          TESTS_FAILED=$(grep -o 'failures="[0-9]*"' test-results.xml | grep -o '[0-9]*' | head -1 || echo "0")
+          TESTS_ERRORS=$(grep -o 'errors="[0-9]*"' test-results.xml | grep -o '[0-9]*' | head -1 || echo "0")  
+          TESTS_SKIPPED=$(grep -o 'skipped="[0-9]*"' test-results.xml | grep -o '[0-9]*' | head -1 || echo "0")
+          
+          # Ensure all values are numeric
+          TESTS_TOTAL=${TESTS_TOTAL:-0}
+          TESTS_FAILED=${TESTS_FAILED:-0}
+          TESTS_ERRORS=${TESTS_ERRORS:-0}
+          TESTS_SKIPPED=${TESTS_SKIPPED:-0}
           
           TESTS_PASSED=$((TESTS_TOTAL - TESTS_FAILED - TESTS_ERRORS - TESTS_SKIPPED))
         else
@@ -629,7 +640,7 @@ jobs:
             echo "| 🚨 Strict PR Review | ❌ **FAILED** | ${{ needs.strict-pr-checks.outputs.strict-duration }} | 🔴 0/100 | Failed strict requirements for main branch |" >> $GITHUB_STEP_SUMMARY
           fi
         else
-          echo "| 🚨 Strict PR Review | ⏭️ **SKIPPED** | - | - | Only runs on PRs to main branch |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚨 Strict PR Review | ⏭️ **SKIPPED** | - | - | Not a PR to main |" >> $GITHUB_STEP_SUMMARY
         fi
         
         # Container Pipeline (only on main)
@@ -647,7 +658,7 @@ jobs:
             echo "| 🐳 Container Pipeline | ❌ **FAILED** | ${{ needs.container-pipeline.outputs.container-duration }} | 🔴 0/100 | Container build or critical security vulnerabilities detected |" >> $GITHUB_STEP_SUMMARY
           fi
         else
-          echo "| 🐳 Container Pipeline | ⏭️ **SKIPPED** | - | - | Only runs on main branch pushes |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐳 Container Pipeline | ⏭️ **SKIPPED** | - | - | Main branch only |" >> $GITHUB_STEP_SUMMARY
         fi
         
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -661,48 +672,50 @@ jobs:
         echo "- **Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
         echo "- **Workflow Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
         
-        # Add detailed security metrics section  
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "## 🔒 Security Analysis Details" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ needs.security-and-quality.outputs.files_scanned }}" != "" ]; then
-          echo "### 🔍 Secret Detection Scan" >> $GITHUB_STEP_SUMMARY
-          echo "- **Files Scanned**: ${{ needs.security-and-quality.outputs.files_scanned }} Python files" >> $GITHUB_STEP_SUMMARY
-          echo "- **Lines Analyzed**: ${{ needs.security-and-quality.outputs.lines_scanned }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **🔑 Basic Secrets**: ${{ needs.security-and-quality.outputs.basic_secrets }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **🔐 API Keys**: ${{ needs.security-and-quality.outputs.api_keys }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **🎫 JWT Tokens**: ${{ needs.security-and-quality.outputs.jwt_tokens }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **🔒 Passwords**: ${{ needs.security-and-quality.outputs.passwords }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **☁️ Cloud Keys**: ${{ needs.security-and-quality.outputs.cloud_keys }}" >> $GITHUB_STEP_SUMMARY
+        # Add detailed security metrics section only if security stage succeeded
+        if [ "${{ needs.security-and-quality.result }}" == "success" ]; then
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔒 Security Analysis Details" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.security-and-quality.outputs.files_scanned }}" != "" ]; then
+            echo "### 🔍 Secret Detection Scan" >> $GITHUB_STEP_SUMMARY
+            echo "- **Files Scanned**: ${{ needs.security-and-quality.outputs.files_scanned }} Python files" >> $GITHUB_STEP_SUMMARY
+            echo "- **Lines Analyzed**: ${{ needs.security-and-quality.outputs.lines_scanned }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🔑 Basic Secrets**: ${{ needs.security-and-quality.outputs.basic_secrets }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🔐 API Keys**: ${{ needs.security-and-quality.outputs.api_keys }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🎫 JWT Tokens**: ${{ needs.security-and-quality.outputs.jwt_tokens }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🔒 Passwords**: ${{ needs.security-and-quality.outputs.passwords }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **☁️ Cloud Keys**: ${{ needs.security-and-quality.outputs.cloud_keys }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.security-and-quality.outputs.files_analyzed }}" != "" ]; then
+            echo "### 🛡️ Bandit Security Analysis" >> $GITHUB_STEP_SUMMARY
+            echo "- **Files Analyzed**: ${{ needs.security-and-quality.outputs.files_analyzed }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🔴 High Severity**: ${{ needs.security-and-quality.outputs.high_severity }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🟡 Medium Severity**: ${{ needs.security-and-quality.outputs.medium_severity }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🟢 Low Severity**: ${{ needs.security-and-quality.outputs.low_severity }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🎯 High Confidence**: ${{ needs.security-and-quality.outputs.confidence_high }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **⚖️ Medium Confidence**: ${{ needs.security-and-quality.outputs.confidence_medium }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🤔 Low Confidence**: ${{ needs.security-and-quality.outputs.confidence_low }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.security-and-quality.outputs.tests_total }}" != "" ]; then
+            echo "### 🧪 Test & Coverage Metrics" >> $GITHUB_STEP_SUMMARY
+            echo "- **Total Tests**: ${{ needs.security-and-quality.outputs.tests_total }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **✅ Passed**: ${{ needs.security-and-quality.outputs.tests_passed }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **❌ Failed**: ${{ needs.security-and-quality.outputs.tests_failed }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **💥 Errors**: ${{ needs.security-and-quality.outputs.tests_errors }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **⏭️ Skipped**: ${{ needs.security-and-quality.outputs.tests_skipped }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **📈 Coverage**: ${{ needs.security-and-quality.outputs.coverage_percent }}%" >> $GITHUB_STEP_SUMMARY
+            echo "- **📄 Lines Covered**: ${{ needs.security-and-quality.outputs.lines_covered }}/${{ needs.security-and-quality.outputs.lines_total }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🌲 Branch Coverage**: ${{ needs.security-and-quality.outputs.branches_covered }}/${{ needs.security-and-quality.outputs.branches_total }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
         fi
         
-        if [ "${{ needs.security-and-quality.outputs.files_analyzed }}" != "" ]; then
-          echo "### 🛡️ Bandit Security Analysis" >> $GITHUB_STEP_SUMMARY
-          echo "- **Files Analyzed**: ${{ needs.security-and-quality.outputs.files_analyzed }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **🔴 High Severity**: ${{ needs.security-and-quality.outputs.high_severity }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **🟡 Medium Severity**: ${{ needs.security-and-quality.outputs.medium_severity }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **🟢 Low Severity**: ${{ needs.security-and-quality.outputs.low_severity }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **🎯 High Confidence**: ${{ needs.security-and-quality.outputs.confidence_high }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **⚖️ Medium Confidence**: ${{ needs.security-and-quality.outputs.confidence_medium }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **🤔 Low Confidence**: ${{ needs.security-and-quality.outputs.confidence_low }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        if [ "${{ needs.security-and-quality.outputs.tests_total }}" != "" ]; then
-          echo "### 🧪 Test & Coverage Metrics" >> $GITHUB_STEP_SUMMARY
-          echo "- **Total Tests**: ${{ needs.security-and-quality.outputs.tests_total }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **✅ Passed**: ${{ needs.security-and-quality.outputs.tests_passed }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **❌ Failed**: ${{ needs.security-and-quality.outputs.tests_failed }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **💥 Errors**: ${{ needs.security-and-quality.outputs.tests_errors }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **⏭️ Skipped**: ${{ needs.security-and-quality.outputs.tests_skipped }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **📈 Coverage**: ${{ needs.security-and-quality.outputs.coverage_percent }}%" >> $GITHUB_STEP_SUMMARY
-          echo "- **📄 Lines Covered**: ${{ needs.security-and-quality.outputs.lines_covered }}/${{ needs.security-and-quality.outputs.lines_total }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **🌲 Branch Coverage**: ${{ needs.security-and-quality.outputs.branches_covered }}/${{ needs.security-and-quality.outputs.branches_total }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+        if [ "${{ github.ref }}" == "refs/heads/main" ] && [ "${{ needs.container-pipeline.result }}" == "success" ]; then
           echo "### 🐳 Container Architecture & Security" >> $GITHUB_STEP_SUMMARY
           
           # Docker Architecture Details
