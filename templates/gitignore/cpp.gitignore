@@ -1,0 +1,166 @@
+# C++ .gitignore
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# CMake
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+# Build directories
+build/
+Build/
+BUILD/
+out/
+x64/
+x86/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+
+# Visual Studio
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+
+# CLion
+.idea/
+cmake-build-*/
+
+# Conan
+conandata.yml
+conanfile.py
+conanbuildinfo.*
+
+# vcpkg
+vcpkg_installed/
+.vcpkg-root
+
+# Qt
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+
+# Xcode
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+!default.pbxuser
+!default.mode1v3
+!default.mode2v3
+!default.perspectivev3
+xcuserdata/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# GDB
+.gdb_history
+
+# Valgrind
+*.memcheck
+*.helgrind
+*.drd
+*.cachegrind
+*.callgrind
+
+# Google Test
+googletest/
+gtest/
+gmock/
+
+# Coverage
+*.gcov
+*.gcda
+*.gcno
+lcov.info
+coverage/
+
+# Doxygen
+html/
+latex/
+man/
+
+# Package managers
+.conan/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# Security
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+tmp/
+temp/

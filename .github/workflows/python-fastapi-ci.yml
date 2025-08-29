@@ -150,6 +150,44 @@ jobs:
         
         echo "✅ Test structure validated ($TEST_FILES test files found)"
     
+    - name: GitIgnore validation
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        echo "📋 Validating .gitignore coverage..."
+        
+        # Check if .gitignore exists
+        if [ ! -f ".gitignore" ]; then
+          echo "❌ .gitignore file not found!"
+          exit 1
+        fi
+        
+        # Check for critical patterns in Python projects
+        CRITICAL_PATTERNS=(
+          "__pycache__"
+          "*.pyc" 
+          ".env"
+          "*.log"
+          ".DS_Store"
+          ".coverage"
+          ".pytest_cache"
+          "*.egg-info"
+        )
+        
+        MISSING_PATTERNS=()
+        for pattern in "${CRITICAL_PATTERNS[@]}"; do
+          if ! grep -q "$pattern" .gitignore; then
+            MISSING_PATTERNS+=("$pattern")
+          fi
+        done
+        
+        if [ ${#MISSING_PATTERNS[@]} -gt 0 ]; then
+          echo "❌ Critical .gitignore patterns missing:"
+          printf '%s\n' "${MISSING_PATTERNS[@]}"
+          exit 1
+        fi
+        
+        echo "✅ .gitignore validation passed"
+    
     - name: Upload security scan results
       uses: github/codeql-action/upload-sarif@v3
       if: always() && hashFiles(format('{0}/bandit-report.json', env.WORKING_DIR))
