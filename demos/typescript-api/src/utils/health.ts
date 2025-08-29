@@ -54,8 +54,8 @@ export class HealthChecker {
   healthEndpoint = async (_req: Request, res: Response): Promise<void> => {
     try {
       const health = await this.checkHealth();
-      const statusCode = health.status === 'healthy' ? 200 :
-                        health.status === 'degraded' ? 200 : 503;
+      const statusCode =
+        health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
 
       res.status(statusCode).json({
         success: true,

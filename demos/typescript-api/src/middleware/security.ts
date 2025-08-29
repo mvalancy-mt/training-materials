@@ -10,7 +10,7 @@ export const securityMiddleware = [
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
+        imgSrc: ["'self'", 'data:', 'https:'],
       },
     },
     hsts: {
@@ -37,14 +37,19 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
 
     if (process.env['NODE_ENV'] !== 'test') {
       // eslint-disable-next-line no-console
-      console.log(`${logLevel.toUpperCase()}: ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+      console.log(
+        `${logLevel.toUpperCase()}: ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`
+      );
     }
   });
 
   next();
 };
 
-export const rateLimiter = (windowMs: number, maxRequests: number): ((req: Request, res: Response, next: NextFunction) => void) => {
+export const rateLimiter = (
+  windowMs: number,
+  maxRequests: number
+): ((req: Request, res: Response, next: NextFunction) => void) => {
   const clients = new Map<string, { count: number; resetTime: number }>();
 
   return (req: Request, res: Response, next: NextFunction): void => {
