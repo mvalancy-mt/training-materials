@@ -354,6 +354,25 @@ describe('Complete Coverage Test Suite', () => {
       (process as any).memoryUsage = originalMemoryUsage;
     });
 
+    it('should test health status unhealthy condition (line 39)', async () => {
+      const healthChecker = new HealthChecker();
+
+      // Mock memory usage to trigger unhealthy status (>90%)
+      const originalMemoryUsage = process.memoryUsage;
+      (process as any).memoryUsage = jest.fn().mockReturnValue({
+        heapUsed: 95 * 1024 * 1024,   // 95MB used
+        heapTotal: 100 * 1024 * 1024, // 100MB total (95% = unhealthy)
+        external: 0,
+        rss: 100 * 1024 * 1024
+      });
+
+      const health = await healthChecker.checkHealth();
+      expect(health.status).toBe('unhealthy');
+
+      // Restore
+      (process as any).memoryUsage = originalMemoryUsage;
+    });
+
     it('should test all controller error paths', async () => {
       const controller = new TaskController();
 
