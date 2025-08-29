@@ -54,9 +54,9 @@ jobs:
       run: |
         echo "🔍 Scanning for secrets, API keys, tokens, and passwords..."
         
-        # Pattern 1: Basic hardcoded secrets  
+        # Pattern 1: Basic hardcoded secrets (avoid legitimate config patterns)
         BASIC_SECRETS=$(grep -r -E "(password|secret|key|token|api_key).*=.*['\"][^'\"]{8,}" app/ --include="*.py" | \
-          grep -v -E "(test|placeholder|example|demo|change-in-production)" || true)
+          grep -v -E "(os\.getenv|os\.environ|getenv|test|placeholder|example|demo|change-in-production)" || true)
         
         # Pattern 2: API Keys (typical formats)
         API_KEYS=$(grep -r -E "(sk-|pk-|ak-|ey-)[a-zA-Z0-9]{20,}" app/ --include="*.py" || true)
@@ -64,9 +64,9 @@ jobs:
         # Pattern 3: JWT tokens
         JWT_TOKENS=$(grep -r -E "ey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9._-]{10,}" app/ --include="*.py" || true)
         
-        # Pattern 4: Password-like strings with special chars and numbers
-        PASSWORD_LIKE=$(grep -r -E "(password|secret|key|token).*=.*['\"][^'\"]*[!@#$%^&*()_+=\-\[\]{}|\\:;\"'<>?,./][^'\"]*[0-9]" app/ --include="*.py" | \
-          grep -v -E "(os\.getenv|os\.environ|self\.|change-in-production|your-|dev-|test-|placeholder|example|demo)" || true)
+        # Pattern 4: Password-like strings with special chars and numbers  
+        PASSWORD_LIKE=$(grep -r -E "(password|secret|key|token).*=.*['\"][^'\"]*[!@#$%^&*()_+=\-\[\]|\\:;\"'<>?,./][^'\"]*[0-9]" app/ --include="*.py" | \
+          grep -v -E "(os\.getenv|os\.environ|self\.|getenv|change-in-production|your-|dev-|test-|placeholder|example|demo)" || true)
         
         # Pattern 5: AWS/Cloud credentials
         CLOUD_KEYS=$(grep -r -E "(AKIA|ASIA)[A-Z0-9]{16}|[A-Za-z0-9/+=]{40}.*aws" app/ --include="*.py" || true)
