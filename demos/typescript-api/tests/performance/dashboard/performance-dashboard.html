@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TypeScript API Performance Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .metric-icon {
+            font-size: 2rem;
+            margin-right: 15px;
+        }
+
+        .metric-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .metric-change {
+            font-size: 0.9rem;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .metric-good { color: #27ae60; background: #e8f5e9; }
+        .metric-warning { color: #f39c12; background: #fef7e6; }
+        .metric-bad { color: #e74c3c; background: #ffebee; }
+
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn-success { background: #27ae60; }
+        .btn-success:hover { background: #229954; }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-good { background: #27ae60; }
+        .status-warning { background: #f39c12; }
+        .status-bad { background: #e74c3c; }
+
+        .data-table {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .refresh-time {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 TypeScript API Performance Dashboard</h1>
+            <p>Real-time performance monitoring and regression detection</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="refreshMetrics()">🔄 Refresh Metrics</button>
+            <button class="btn btn-success" onclick="runPerformanceTest()">🧪 Run Performance Test</button>
+            <button class="btn" onclick="viewReports()">📊 View Reports</button>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div class="metric-icon">⚡</div>
+                    <div class="metric-title">P95 Response Time</div>
+                </div>
+                <div class="metric-value" id="p95-value">Loading...</div>
+                <div class="metric-change" id="p95-change">Compared to baseline</div>
+                <div class="chart-container">
+                    <canvas id="p95-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div class="metric-icon">🎯</div>
+                    <div class="metric-title">P99 Response Time</div>
+                </div>
+                <div class="metric-value" id="p99-value">Loading...</div>
+                <div class="metric-change" id="p99-change">Compared to baseline</div>
+                <div class="chart-container">
+                    <canvas id="p99-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div class="metric-icon">🚨</div>
+                    <div class="metric-title">Error Rate</div>
+                </div>
+                <div class="metric-value" id="error-rate-value">Loading...</div>
+                <div class="metric-change" id="error-rate-change">Compared to baseline</div>
+                <div class="chart-container">
+                    <canvas id="error-rate-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div class="metric-icon">🔥</div>
+                    <div class="metric-title">Requests per Second</div>
+                </div>
+                <div class="metric-value" id="rps-value">Loading...</div>
+                <div class="metric-change" id="rps-change">Compared to baseline</div>
+                <div class="chart-container">
+                    <canvas id="rps-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-table">
+            <h3 style="margin-bottom: 20px;">📈 Recent Test Results</h3>
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Timestamp</th>
+                        <th>Test Type</th>
+                        <th>P95 (ms)</th>
+                        <th>P99 (ms)</th>
+                        <th>Error Rate</th>
+                        <th>RPS</th>
+                        <th>Commit</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body">
+                    <tr><td colspan="8" style="text-align: center; color: #666;">Loading test results...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="refresh-time">
+            Last updated: <span id="last-updated">Never</span>
+        </div>
+    </div>
+
+    <script>
+        // Sample data for demonstration
+        const mockData = {
+            baseline: {
+                p95: 150,
+                p99: 300,
+                error_rate: 0.1,
+                rps: 45.2
+            },
+            current: {
+                p95: 165,
+                p99: 285,
+                error_rate: 0.15,
+                rps: 47.8
+            },
+            history: [
+                { timestamp: '2024-01-15 10:30', p95: 145, p99: 295, error_rate: 0.05, rps: 46.1 },
+                { timestamp: '2024-01-15 14:20', p95: 158, p99: 310, error_rate: 0.12, rps: 44.3 },
+                { timestamp: '2024-01-15 16:45', p95: 162, p99: 288, error_rate: 0.08, rps: 48.2 },
+                { timestamp: '2024-01-15 18:30', p95: 165, p99: 285, error_rate: 0.15, rps: 47.8 }
+            ]
+        };
+
+        const charts = {};
+
+        function initializeCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            };
+
+            // P95 Chart
+            charts.p95 = new Chart(document.getElementById('p95-chart'), {
+                type: 'line',
+                data: {
+                    labels: mockData.history.map(d => d.timestamp.split(' ')[1]),
+                    datasets: [{
+                        data: mockData.history.map(d => d.p95),
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // P99 Chart
+            charts.p99 = new Chart(document.getElementById('p99-chart'), {
+                type: 'line',
+                data: {
+                    labels: mockData.history.map(d => d.timestamp.split(' ')[1]),
+                    datasets: [{
+                        data: mockData.history.map(d => d.p99),
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Error Rate Chart
+            charts.errorRate = new Chart(document.getElementById('error-rate-chart'), {
+                type: 'line',
+                data: {
+                    labels: mockData.history.map(d => d.timestamp.split(' ')[1]),
+                    datasets: [{
+                        data: mockData.history.map(d => d.error_rate),
+                        borderColor: '#f39c12',
+                        backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // RPS Chart
+            charts.rps = new Chart(document.getElementById('rps-chart'), {
+                type: 'line',
+                data: {
+                    labels: mockData.history.map(d => d.timestamp.split(' ')[1]),
+                    datasets: [{
+                        data: mockData.history.map(d => d.rps),
+                        borderColor: '#27ae60',
+                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+
+        function updateMetrics() {
+            const { baseline, current } = mockData;
+
+            // Update P95
+            document.getElementById('p95-value').textContent = `${current.p95}ms`;
+            const p95Change = ((current.p95 - baseline.p95) / baseline.p95 * 100).toFixed(1);
+            const p95Element = document.getElementById('p95-change');
+            p95Element.textContent = `${p95Change > 0 ? '+' : ''}${p95Change}% from baseline`;
+            p95Element.className = `metric-change ${p95Change > 10 ? 'metric-bad' : p95Change > 5 ? 'metric-warning' : 'metric-good'}`;
+
+            // Update P99
+            document.getElementById('p99-value').textContent = `${current.p99}ms`;
+            const p99Change = ((current.p99 - baseline.p99) / baseline.p99 * 100).toFixed(1);
+            const p99Element = document.getElementById('p99-change');
+            p99Element.textContent = `${p99Change > 0 ? '+' : ''}${p99Change}% from baseline`;
+            p99Element.className = `metric-change ${p99Change > 10 ? 'metric-bad' : p99Change > 5 ? 'metric-warning' : 'metric-good'}`;
+
+            // Update Error Rate
+            document.getElementById('error-rate-value').textContent = `${current.error_rate}%`;
+            const errorChange = ((current.error_rate - baseline.error_rate) / baseline.error_rate * 100).toFixed(1);
+            const errorElement = document.getElementById('error-rate-change');
+            errorElement.textContent = `${errorChange > 0 ? '+' : ''}${errorChange}% from baseline`;
+            errorElement.className = `metric-change ${errorChange > 50 ? 'metric-bad' : errorChange > 25 ? 'metric-warning' : 'metric-good'}`;
+
+            // Update RPS
+            document.getElementById('rps-value').textContent = `${current.rps}`;
+            const rpsChange = ((current.rps - baseline.rps) / baseline.rps * 100).toFixed(1);
+            const rpsElement = document.getElementById('rps-change');
+            rpsElement.textContent = `${rpsChange > 0 ? '+' : ''}${rpsChange}% from baseline`;
+            rpsElement.className = `metric-change ${rpsChange < -10 ? 'metric-bad' : rpsChange < -5 ? 'metric-warning' : 'metric-good'}`;
+        }
+
+        function updateResultsTable() {
+            const tbody = document.getElementById('results-body');
+            const testResults = [
+                {
+                    status: 'pass',
+                    timestamp: '2024-01-15 18:30:45',
+                    type: 'Heavy Load',
+                    p95: 165,
+                    p99: 285,
+                    error_rate: 0.15,
+                    rps: 47.8,
+                    commit: 'a1b2c3d'
+                },
+                {
+                    status: 'pass',
+                    timestamp: '2024-01-15 16:45:23',
+                    type: 'Moderate Load',
+                    p95: 162,
+                    p99: 288,
+                    error_rate: 0.08,
+                    rps: 48.2,
+                    commit: 'x7y8z9a'
+                },
+                {
+                    status: 'warning',
+                    timestamp: '2024-01-15 14:20:12',
+                    type: 'Light Load',
+                    p95: 158,
+                    p99: 310,
+                    error_rate: 0.12,
+                    rps: 44.3,
+                    commit: 'm4n5o6p'
+                }
+            ];
+
+            tbody.innerHTML = testResults.map(result => {
+                const statusClass = result.status === 'pass' ? 'status-good' :
+                                  result.status === 'warning' ? 'status-warning' : 'status-bad';
+
+                return `
+                    <tr>
+                        <td><span class="status-indicator ${statusClass}"></span>${result.status.toUpperCase()}</td>
+                        <td>${result.timestamp}</td>
+                        <td>${result.type}</td>
+                        <td>${result.p95}ms</td>
+                        <td>${result.p99}ms</td>
+                        <td>${result.error_rate}%</td>
+                        <td>${result.rps}</td>
+                        <td><code>${result.commit}</code></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function refreshMetrics() {
+            updateMetrics();
+            updateResultsTable();
+            document.getElementById('last-updated').textContent = new Date().toLocaleString();
+
+            // Add visual feedback
+            const btns = document.querySelectorAll('.btn');
+            btns[0].textContent = '🔄 Refreshing...';
+            setTimeout(() => {
+                btns[0].textContent = '🔄 Refresh Metrics';
+            }, 1000);
+        }
+
+        function runPerformanceTest() {
+            alert('🚀 Performance test initiated!\n\nThis would typically:\n• Start the performance test suite\n• Run Artillery.js scenarios\n• Update metrics in real-time\n• Generate reports\n\nFor this demo, metrics are simulated.');
+        }
+
+        function viewReports() {
+            alert('📊 Opening performance reports!\n\nThis would typically open:\n• HTML regression reports\n• Baseline comparison charts\n• Historical trend analysis\n• Performance recommendations\n\nIn a real implementation, this would link to the generated HTML reports.');
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            refreshMetrics();
+
+            // Auto-refresh every 30 seconds
+            setInterval(refreshMetrics, 30000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+config:
+  target: 'http://localhost:3000'
+  phases:
+    - duration: 30
+      arrivalRate: 20
+      name: "Ramp up"
+    - duration: 120
+      arrivalRate: 50
+      name: "Moderate load"
+    - duration: 30
+      arrivalRate: 20
+      name: "Ramp down"
+  ensure:
+    p95: 300  # 95th percentile response time should be under 300ms
+    p99: 800  # 99th percentile response time should be under 800ms
+    maxErrorRate: 1  # Error rate should be under 1%
+  processor: "../scripts/performance-processor.js"
+
+scenarios:
+  - name: "Concurrent Task Operations"
+    weight: 70
+    flow:
+      # Batch create multiple tasks
+      - loop:
+          count: 3
+          over:
+            - title: "Concurrent Task {{ $loopElement }}"
+              priority: "{{ $randomString() }}"
+        flow:
+          - post:
+              url: "/api/v1/tasks"
+              json:
+                title: "{{ $loopElement.title }}"
+                description: "Performance test under moderate load"
+                priority: "high"
+                status: "pending"
+              capture:
+                - json: "$.data.id"
+                  as: "taskId{{ $loopCount }}"
+              expect:
+                - statusCode: 201
+          - think: 0.5
+
+      # Concurrent reads
+      - get:
+          url: "/api/v1/tasks"
+          qs:
+            priority: "high"
+          expect:
+            - statusCode: 200
+
+      # Update tasks concurrently
+      - put:
+          url: "/api/v1/tasks/{{ taskId1 }}"
+          json:
+            status: "completed"
+          expect:
+            - statusCode: 200
+
+      - get:
+          url: "/api/v1/tasks/stats"
+          expect:
+            - statusCode: 200
+
+      - think: 1
+
+  - name: "Heavy Read Operations"
+    weight: 20
+    flow:
+      - loop:
+          count: 10
+        flow:
+          - get:
+              url: "/api/v1/tasks"
+              qs:
+                status: "{{ $randomString() }}"
+              expect:
+                - statusCode: 200
+          - think: 0.1
+
+      - get:
+          url: "/api/v1/tasks/stats"
+          expect:
+            - statusCode: 200
+
+  - name: "Error Handling Under Load"
+    weight: 10
+    flow:
+      # Test error scenarios
+      - get:
+          url: "/api/v1/tasks/invalid-id"
+          expect:
+            - statusCode: 404
+
+      - post:
+          url: "/api/v1/tasks"
+          json:
+            # Missing required fields to trigger validation error
+            description: "Missing title field"
+          expect:
+            - statusCode: 400
+
+      - put:
+          url: "/api/v1/tasks/nonexistent-id"
+          json:
+            status: "completed"
+          expect:
+            - statusCode: 404
+
+      - think: 1
