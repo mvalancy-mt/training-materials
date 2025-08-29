@@ -2,11 +2,12 @@
 Health check endpoints.
 """
 
-from datetime import datetime
-from fastapi import APIRouter, status
-from fastapi.responses import JSONResponse
 import os
 import sys
+from datetime import datetime
+
+from fastapi import APIRouter, status
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 

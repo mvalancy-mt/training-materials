@@ -4,10 +4,11 @@ Task API endpoints.
 
 from datetime import datetime
 from typing import List, Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 
-from app.models.task import Task, TaskCreate, TaskUpdate, TaskStatus, TaskPriority
+from app.models.task import Task, TaskCreate, TaskPriority, TaskStatus, TaskUpdate
 
 router = APIRouter()
 

@@ -2,14 +2,15 @@
 Main FastAPI application entry point.
 """
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-import uvicorn
 import os
 from datetime import datetime
 
-from app.api.v1 import tasks, health
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from app.api.v1 import health, tasks
 from app.core.config import get_settings
 
 settings = get_settings()
