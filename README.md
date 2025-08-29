@@ -68,6 +68,15 @@ This repository specifically demonstrates:
 - **C++**: HTTP server with CMake, performance testing
 - **Go**: Microservice with Redis, high-performance patterns
 
+### 📋 CI/CD Requirements
+
+**Complete testing and quality requirements:** [CI-REQUIREMENTS.md](docs/CI-REQUIREMENTS.md)
+
+- **🔒 Local**: Pre-commit secret detection (6 patterns) + code quality
+- **⚡ Feature**: 90% coverage + security scans + fast feedback
+- **✅ Develop**: 95% coverage + comprehensive testing + container scans
+- **🚨 Main**: 100% coverage + zero vulnerabilities + production validation
+
 ## Git Branching Strategy
 
 This repository demonstrates a **production-ready Git workflow** with **ruthless branch management** and **strict CI/CD enforcement**:
@@ -98,9 +107,9 @@ main           ←─── 🔒 PROTECTED (No direct pushes)
 
 | Branch | Direct Push | CI Requirements | Deployment |
 |--------|-------------|-----------------|------------|
-| `main` | ❌ **BLOCKED** | 🚨 **Ultra-Strict**: 100% test coverage, zero vulnerabilities, container scan | 🚀 **Production (latest tag)** |
-| `develop` | ❌ **BLOCKED** | ✅ **Comprehensive**: 95% coverage, security scan, quality gates | 🚗 **All Test Vehicles (daily)** |
-| `feature/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | 🧪 **Test Benches (on-demand)** |
+| `main` | ❌ **BLOCKED** | 🚨 **Ultra-Strict**: [100% coverage, zero vulnerabilities](docs/CI-REQUIREMENTS.md#stage-4-main-branch-prs-ultra-strict-ci) | 🚀 **Production (latest tag)** |
+| `develop` | ❌ **BLOCKED** | ✅ **Comprehensive**: [95% coverage, security scans](docs/CI-REQUIREMENTS.md#stage-3-develop-branch-comprehensive-ci) | 🚗 **All Test Vehicles (daily)** |
+| `feature/*` | ✅ Allowed | ⚡ **Basic**: [90% coverage, fast feedback](docs/CI-REQUIREMENTS.md#stage-2-feature-branches-basic-ci) | 🧪 **Test Benches (on-demand)** |
 | `hotfix/*` | ✅ Allowed | 🚨 **Ultra-Strict**: Same as main branch (production-ready) | ⚠️ **Emergency Production** |
 | `bugfix/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | 🧪 **Test Benches (on-demand)** |
 | `docs/*` | ✅ Allowed | 📝 **Documentation**: Lint checks, link validation | ❌ **None** |
@@ -389,16 +398,16 @@ Test Benches (features) 🧪 registry/app:feature-name
 ## Learning Path
 
 ### For Beginners
-1. Read `docs/overview.md` for Docker and CI/CD fundamentals
-2. Work through the Python FastAPI demo
-3. Study the GitHub Actions workflows
-4. Try building and testing locally with Docker
+1. **Read CI/CD requirements**: [CI-REQUIREMENTS.md](docs/CI-REQUIREMENTS.md) - understand testing levels
+2. **Setup security**: Run `pip install pre-commit && pre-commit install`
+3. **Work through Python demo**: `demos/python-fastapi` with Docker
+4. **Study GitHub workflows**: `.github/workflows/` files for CI/CD patterns
 
 ### For Intermediate Users
-1. Compare different language implementations
-2. Study advanced CI/CD features (matrix builds, security scanning)
-3. Customize workflows for your needs
-4. Explore multi-stage build optimizations
+1. **Compare language implementations**: Python → C++ → TypeScript → Go
+2. **Study advanced CI features**: Matrix builds, security scanning, coverage analysis
+3. **Customize workflows**: Adapt patterns for your specific needs
+4. **Explore container security**: Multi-stage builds, distroless images, vulnerability scanning
 
 ## Key Learning Objectives
 
