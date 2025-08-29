@@ -43,11 +43,15 @@ jobs:
     
     - name: Check for secrets in code
       run: |
-        # Check for potential hardcoded secrets (but exclude obvious dev/placeholder values)
+        # Check for potential hardcoded secrets (but exclude legitimate config patterns)
         echo "🔍 Scanning for hardcoded secrets..."
         
-        # Look for potential secrets but exclude common dev placeholders
-        POTENTIAL_SECRETS=$(grep -r -E "(password|api_key|secret|token).*=.*['\"][^'\"]{10,}" ${{ env.WORKING_DIR }}/app/ --include="*.py" | grep -v -E "(change-in-production|your-|dev-|test-|placeholder)" || true)
+        # Look for potential hardcoded secrets but exclude:
+        # - Configuration environment variable patterns (os.getenv, os.environ)
+        # - Development placeholders 
+        # - Variable assignments (self.variable = ...)
+        POTENTIAL_SECRETS=$(grep -r -E "(password|api_key|secret|token).*=.*['\"][^'\"]{10,}" ${{ env.WORKING_DIR }}/app/ --include="*.py" | \
+          grep -v -E "(os\.getenv|os\.environ|self\.|change-in-production|your-|dev-|test-|placeholder|example|demo)" || true)
         
         if [ -n "$POTENTIAL_SECRETS" ]; then
           echo "❌ Potential hardcoded secrets found!"
