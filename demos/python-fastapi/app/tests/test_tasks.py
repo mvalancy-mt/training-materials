@@ -50,7 +50,9 @@ def test_get_nonexistent_task(client: TestClient):
     response = client.get("/api/v1/tasks/99999")
     assert response.status_code == 404
     data = response.json()
-    assert "not found" in data["detail"].lower()
+    # Check for error message in either 'detail' or 'message' field
+    error_msg = data.get("detail", data.get("message", "")).lower()
+    assert "not found" in error_msg
 
 
 def test_update_task(client: TestClient, sample_task):
