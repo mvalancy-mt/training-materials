@@ -303,39 +303,37 @@ describe('Complete Coverage Test Suite', () => {
   });
 
   describe('Complete Coverage - Missing Lines', () => {
-    it('should test console.log statements in app.ts by temporarily changing NODE_ENV', async () => {
+    it('should test logServerStartup function from app.ts', () => {
       const originalEnv = process.env['NODE_ENV'];
       const originalConsoleLog = console.log;
 
-      // Mock console.log to capture calls
-      const mockLog = jest.fn();
-      console.log = mockLog;
+      try {
+        // Mock console.log to capture calls
+        const mockLog = jest.fn();
+        console.log = mockLog;
 
-      // Temporarily set to non-test environment to trigger console logs
-      process.env['NODE_ENV'] = 'development';
+        // Temporarily set to non-test environment
+        process.env['NODE_ENV'] = 'development';
 
-      // Import fresh app instance (this won't work with current setup, so we'll test differently)
-      const response = await request(app).get('/health');
-      expect(response.status).toBe(200);
+        // Import the logServerStartup function from app.ts
+        const { logServerStartup } = require('../src/app');
 
-      // Restore everything
-      console.log = originalConsoleLog;
-      process.env['NODE_ENV'] = originalEnv;
-    });
+        // Call the function with a test port
+        const testPort = 3000;
+        logServerStartup(testPort);
 
-    it('should test rate limiter timeout behavior', async () => {
-      // Create many requests rapidly to test rate limiter reset logic
-      const requests = [];
-      for (let i = 0; i < 10; i++) {
-        requests.push(request(app).get('/api/v1/tasks'));
+        // Verify the console.log calls were made with the exact messages
+        expect(mockLog).toHaveBeenCalledWith(`🚀 TypeScript API server running on port ${testPort}`);
+        expect(mockLog).toHaveBeenCalledWith(`📊 Health check: http://localhost:${testPort}/health`);
+        expect(mockLog).toHaveBeenCalledWith(`🎯 API endpoints: http://localhost:${testPort}/api/v1/tasks`);
+
+      } finally {
+        // Restore everything
+        console.log = originalConsoleLog;
+        process.env['NODE_ENV'] = originalEnv;
       }
-
-      const responses = await Promise.all(requests);
-      const statusCodes = responses.map(r => r.status);
-
-      // Should have a mix of 200s and potentially 429s
-      expect(statusCodes).toEqual(expect.arrayContaining([200]));
     });
+
 
     it('should test health status degraded condition', async () => {
       const healthChecker = new HealthChecker();
@@ -461,15 +459,77 @@ describe('Complete Coverage Test Suite', () => {
 
     it('should test invalid query parameter handling', async () => {
       // Create a task first
-      await request(app)
+      const createResponse = await request(app)
         .post('/api/v1/tasks')
         .send({ title: 'Query Test', priority: 'medium' });
 
+      // Handle potential rate limiting
+      if (createResponse.status === 429) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
       // Test with invalid status and priority (should be ignored gracefully)
       const response = await request(app).get('/api/v1/tasks?status=invalid&priority=invalid');
-      expect(response.status).toBe(200);
+
+      // If we get rate limited, wait and retry
+      if (response.status === 429) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const retryResponse = await request(app).get('/api/v1/tasks?status=invalid&priority=invalid');
+        expect(retryResponse.status).toBe(200);
+      } else {
+        expect(response.status).toBe(200);
+      }
       // Should return all tasks since invalid filters are ignored
     });
+
+    it('should test updateTask validation error handling (lines 134-139)', async () => {
+      // Create a task first
+      const createResponse = await request(app)
+        .post('/api/v1/tasks')
+        .send({ title: 'Test Task', priority: 'medium' });
+
+      // Handle potential rate limiting from previous tests
+      if (createResponse.status === 429) {
+        // Wait and retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const retryResponse = await request(app)
+          .post('/api/v1/tasks')
+          .send({ title: 'Test Task', priority: 'medium' });
+        expect(retryResponse.status).toBe(201);
+
+        const taskId = retryResponse.body.data.id;
+
+        // Test validation error in updateTask with invalid priority
+        const response = await request(app)
+          .put(`/api/v1/tasks/${taskId}`)
+          .send({
+            title: 'Valid Title',
+            priority: 'invalid-priority-value' // This should trigger Zod validation error
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error).toBe('Validation failed');
+        expect(response.body.details).toBeDefined();
+      } else {
+        expect(createResponse.status).toBe(201);
+        const taskId = createResponse.body.data.id;
+
+        // Test validation error in updateTask with invalid priority
+        const response = await request(app)
+          .put(`/api/v1/tasks/${taskId}`)
+          .send({
+            title: 'Valid Title',
+            priority: 'invalid-priority-value' // This should trigger Zod validation error
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error).toBe('Validation failed');
+        expect(response.body.details).toBeDefined();
+      }
+    });
+
   });
 
   describe('Error Handler Coverage', () => {
@@ -487,6 +547,30 @@ describe('Complete Coverage Test Suite', () => {
 
       // Restore
       process.env['NODE_ENV'] = originalEnv;
+    });
+
+    // Rate limiter test at the end to avoid interfering with other tests
+    it('should test rate limiter 429 response (lines 62-67)', async () => {
+      // Make 101 sequential requests to trigger rate limiting (limit is 100 per 60 seconds)
+      let rateLimitHit = false;
+
+      for (let i = 0; i < 101; i++) {
+        const response = await request(app).get('/api/v1/tasks');
+
+        if (response.status === 429) {
+          rateLimitHit = true;
+          // Verify the 429 response structure matches security.ts lines 62-67
+          expect(response.body).toMatchObject({
+            success: false,
+            error: 'Too many requests, please try again later',
+            retryAfter: expect.any(Number)
+          });
+          break;
+        }
+      }
+
+      // Ensure we actually hit the rate limiter
+      expect(rateLimitHit).toBe(true);
     });
   });
 });

@@ -37,12 +37,16 @@ app.use('/api/v1', apiRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const server = app.listen(port, '0.0.0.0', () => {
+export const logServerStartup = (port: number): void => {
   if (process.env['NODE_ENV'] !== 'test') {
     console.log(`🚀 TypeScript API server running on port ${port}`);
     console.log(`📊 Health check: http://localhost:${port}/health`);
     console.log(`🎯 API endpoints: http://localhost:${port}/api/v1/tasks`);
   }
+};
+
+const server = app.listen(port, '0.0.0.0', () => {
+  logServerStartup(port);
 });
 
 export { app, server };
