@@ -55,7 +55,7 @@ This repository specifically demonstrates:
 - Layer caching and build optimization
 - Container structure testing
 
-### CI/CD Pipeline Patterns  
+### CI/CD Pipeline Patterns
 - Automated Docker image building
 - Container security scanning
 - Multi-architecture builds
@@ -64,7 +64,7 @@ This repository specifically demonstrates:
 
 ### Language-Specific Examples
 - **Python FastAPI**: Web API with PostgreSQL, comprehensive testing
-- **TypeScript/Node.js**: Express API with MongoDB, real-time features  
+- **TypeScript/Node.js**: Express API with MongoDB, real-time features
 - **C++**: HTTP server with CMake, performance testing
 - **Go**: Microservice with Redis, high-performance patterns
 
@@ -78,11 +78,11 @@ This repository demonstrates a **production-ready Git workflow** with **ruthless
 └─────────────────────────────────────────────────────────────┘
 
 main           ←─── 🔒 PROTECTED (No direct pushes)
-│              ←─── ✅ Ultra-strict CI (100% coverage required) 
+│              ←─── ✅ Ultra-strict CI (100% coverage required)
 │              ←─── 🚀 ALWAYS PRODUCTION-READY (latest Docker tag)
 │              ←─── ⚡ DEPLOY TO FIELD WITH NO NOTICE
 │
-├── develop    ←─── 🔄 Integration branch (WIP)  
+├── develop    ←─── 🔄 Integration branch (WIP)
 │   │          ←─── ✅ Comprehensive CI on push
 │   │          ←─── 🚨 Strict CI on PR to main
 │   │
@@ -138,8 +138,8 @@ gh pr create --base develop --title "Add new API endpoint"
 git branch -d feature/new-api-endpoint
 git push origin --delete feature/new-api-endpoint
 
-# Release Process (ultra-strict CI) 
-git checkout develop  
+# Release Process (ultra-strict CI)
+git checkout develop
 gh pr create --base main --title "Release v2.1.0"
 # ⚡ Triggers ultra-strict CI: 100% coverage, zero vulnerabilities
 
@@ -171,6 +171,7 @@ git push -u origin feature/new-feature
 - Docker Desktop or Docker Engine
 - GitHub CLI (for testing workflows)
 - Language-specific tools (varies by demo)
+- **Pre-commit hooks** (recommended for local secret detection)
 
 ### Quick Start
 
@@ -180,29 +181,36 @@ git push -u origin feature/new-feature
    cd training-materials
    ```
 
-2. Start with the Python FastAPI demo (most beginner-friendly):
+2. **Set up local secret detection** (prevents committing secrets):
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   pre-commit run --all-files  # Test on existing files
+   ```
+
+3. Start with the Python FastAPI demo (most beginner-friendly):
    ```bash
    cd demos/python-fastapi
    docker-compose up --build
    ```
 
-3. Open http://localhost:8000/docs to see the API documentation
+4. Open http://localhost:8000/docs to see the API documentation
 
-4. Study the `.github/workflows/` files to understand the CI/CD pipeline
+5. Study the `.github/workflows/` files to understand the CI/CD pipeline
 
-5. **Experience the branching strategy**:
+6. **Experience the branching strategy**:
    ```bash
    # Create a feature branch (temporary!)
    git checkout -b feature/test-changes
-   
+
    # IMMEDIATELY push to origin (others need visibility)
    git push -u origin feature/test-changes
-   
+
    # Make some changes, commit and push frequently
    echo "# Test" >> test.md
    git add test.md && git commit -m "Test commit"
    git push
-   
+
    # Create PR and watch the CI/CD pipeline in action
    gh pr create --base develop --title "Test PR"
    ```
@@ -244,7 +252,7 @@ git checkout -b feature/secret-project
 > **"Your laptop can be destroyed at any moment and you should lose almost no work."**
 
 This means:
-- Create branch → Push immediately  
+- Create branch → Push immediately
 - Make changes → Commit and push
 - Continue work → Commit and push frequently
 - Never go more than 30 minutes without pushing
@@ -258,7 +266,7 @@ This means:
 The `main` branch follows a **zero-notice deployment** philosophy:
 
 - **✅ Always Production-Ready**: Every commit can be deployed to production immediately
-- **🏷️ Latest Docker Tag**: All builds automatically tagged as `latest` in container registry  
+- **🏷️ Latest Docker Tag**: All builds automatically tagged as `latest` in container registry
 - **⚡ Field Deployment**: Ready for immediate customer deployment with no additional testing
 - **🛡️ Zero-Defect Policy**: Ultra-strict CI ensures no broken code ever reaches main
 - **🔒 Immutable Quality**: 100% test coverage, zero security vulnerabilities, full container scan
@@ -289,7 +297,7 @@ name: Daily Test Vehicle Reset
 on:
   schedule:
     - cron: '0 6 * * *'  # 6 AM daily
-  
+
 jobs:
   reset-test-vehicles:
     runs-on: [self-hosted, test-vehicle-controller]
@@ -298,14 +306,14 @@ jobs:
         run: |
           # Flash latest develop to all test vehicles/products
           ./scripts/flash-vehicle.sh vehicle-001 registry/app:develop
-          ./scripts/flash-vehicle.sh vehicle-002 registry/app:develop  
+          ./scripts/flash-vehicle.sh vehicle-002 registry/app:develop
           ./scripts/flash-vehicle.sh vehicle-003 registry/app:develop
-          
+
           # Verify all vehicles are operational
           ./scripts/health-check.sh vehicle-001
           ./scripts/health-check.sh vehicle-002
           ./scripts/health-check.sh vehicle-003
-          
+
           # Reset vehicle state to known baseline
           ./scripts/reset-vehicle-state.sh --all
 ```
@@ -325,11 +333,11 @@ jobs:
         run: |
           # Find available test bench
           BENCH=$(kubectl get deployments -l type=test-bench,status=available -o name | head -1)
-          
+
           # Deploy feature branch
           kubectl set image $BENCH app=registry/app:${{ github.ref_name }}
           kubectl label deployment/${BENCH#*/} branch=${{ github.ref_name }}
-          
+
           # Expose via ingress
           echo "🌐 Available at: https://testbench-${{ github.ref_name }}.internal.com"
 ```
@@ -343,10 +351,10 @@ jobs:
 
 Production (main)     🚀 registry/app:latest
 ├── Customer Sites    ├── Field deployments
-├── Staging          ├── Pre-production validation  
+├── Staging          ├── Pre-production validation
 └── Load Testing     └── Performance verification
 
-Test Vehicles (develop) 🚗 registry/app:develop  
+Test Vehicles (develop) 🚗 registry/app:develop
 ├── Vehicle-001      ├── Real product with latest firmware (daily @ 6 AM)
 ├── Vehicle-002      ├── Integration testing on actual hardware
 ├── Vehicle-003      ├── QA validation with real sensors/actuators
@@ -354,7 +362,7 @@ Test Vehicles (develop) 🚗 registry/app:develop
 
 Test Benches (features) 🧪 registry/app:feature-name
 ├── Bench-A          ├── feature/user-auth → testbench-user-auth.internal.com
-├── Bench-B          ├── feature/api-v2 → testbench-api-v2.internal.com  
+├── Bench-B          ├── feature/api-v2 → testbench-api-v2.internal.com
 ├── Bench-C          ├── bugfix/memory-leak → testbench-memory-leak.internal.com
 └── Bench-N          └── Auto-cleanup after branch deletion
 ```
@@ -363,7 +371,7 @@ Test Benches (features) 🧪 registry/app:feature-name
 
 - **🔄 Daily Fresh Start**: Test vehicles flashed with develop firmware every morning
 - **🧪 Isolated Testing**: Features tested on HIL benches before vehicle deployment
-- **⚡ Fast Feedback**: Developers can test on real hardware daily  
+- **⚡ Fast Feedback**: Developers can test on real hardware daily
 - **🚗 Real Hardware Validation**: Develop branch tested on actual products
 - **🚀 Field Ready**: Main branch proven on real vehicles before customer deployment
 
@@ -391,7 +399,7 @@ By working through these materials, you will learn:
   - Container testing and validation
   - Production deployment patterns
 
-- **CI/CD Automation**  
+- **CI/CD Automation**
   - GitHub Actions workflow design
   - Automated testing strategies
   - Security scanning integration
