@@ -103,7 +103,7 @@ jobs:
         echo "✅ Import sorting OK"
         
         # Linting
-        flake8 app/ || (echo "❌ Linting issues found" && exit 1)
+        flake8 app/ --extend-ignore=E203 || (echo "❌ Linting issues found" && exit 1)
         echo "✅ Linting OK"
         
         # Type checking

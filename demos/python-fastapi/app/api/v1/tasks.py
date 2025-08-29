@@ -49,7 +49,7 @@ async def get_tasks(
         ]
 
     # Apply pagination
-    paginated_tasks = filtered_tasks[offset:offset + limit]
+    paginated_tasks = filtered_tasks[offset : offset + limit]
 
     return paginated_tasks
 
