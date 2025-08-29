@@ -99,10 +99,10 @@ main           ←─── 🔒 PROTECTED (No direct pushes)
 | Branch | Direct Push | CI Requirements | Deployment |
 |--------|-------------|-----------------|------------|
 | `main` | ❌ **BLOCKED** | 🚨 **Ultra-Strict**: 100% test coverage, zero vulnerabilities, container scan | 🚀 **Production (latest tag)** |
-| `develop` | ❌ **BLOCKED** | ✅ **Comprehensive**: 95% coverage, security scan, quality gates | 📦 **Staging** |
-| `feature/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | ❌ **None** |
-| `hotfix/*` | ✅ Allowed | 🚨 **Ultra-Strict**: Same as main branch (production-ready) | ⚠️ **Emergency** |
-| `bugfix/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | ❌ **None** |
+| `develop` | ❌ **BLOCKED** | ✅ **Comprehensive**: 95% coverage, security scan, quality gates | 🏗️ **All Test Stations (daily)** |
+| `feature/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | 🧪 **Test Benches (on-demand)** |
+| `hotfix/*` | ✅ Allowed | 🚨 **Ultra-Strict**: Same as main branch (production-ready) | ⚠️ **Emergency Production** |
+| `bugfix/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | 🧪 **Test Benches (on-demand)** |
 | `docs/*` | ✅ Allowed | 📝 **Documentation**: Lint checks, link validation | ❌ **None** |
 
 ### Workflow Examples
@@ -136,6 +136,15 @@ git push -u origin hotfix/security-vulnerability
 # Direct PR to main (ultra-strict CI)
 gh pr create --base main --title "HOTFIX: Critical security patch"
 # ⚡ Same strict requirements as main branch
+
+# Test Bench Deployment (feature validation)
+git push -u origin feature/new-feature
+# ⚡ Automatically builds and deploys to available test bench
+# Access via: https://testbench-feature-new-feature.internal.com
+
+# Daily Test Station Reset (happens automatically at 6 AM)
+# All test stations automatically pull latest develop branch
+# Ensures clean, consistent testing environment every day
 ```
 
 ## Getting Started
@@ -203,6 +212,91 @@ kubectl set image deployment/app app=your-registry/app:latest
 ```
 
 **Everything in main is field-tested, security-validated, and production-proven.** 🎯
+
+## 🧪 **Test Infrastructure & Deployment Strategy**
+
+### **Automated Test Environment Management**
+
+This workflow supports a comprehensive test infrastructure with **custom GitHub runners** and **automated deployments**:
+
+#### **🏗️ Test Station Daily Reset (Develop Branch)**
+```bash
+# Automated daily at 6:00 AM via GitHub Actions scheduled workflow
+name: Daily Test Station Reset
+on:
+  schedule:
+    - cron: '0 6 * * *'  # 6 AM daily
+  
+jobs:
+  reset-test-stations:
+    runs-on: [self-hosted, test-station-controller]
+    steps:
+      - name: 🔄 Deploy develop to all test stations
+        run: |
+          # Deploy latest develop to all test stations
+          kubectl set image deployment/test-station-* app=registry/app:develop
+          # Verify all stations are healthy
+          kubectl rollout status deployment/test-station-1
+          kubectl rollout status deployment/test-station-2
+          # ... for all test stations
+```
+
+#### **🧪 Feature Branch Test Bench Deployment**
+```bash
+# Triggered on every feature branch push
+on:
+  push:
+    branches: ['feature/*', 'bugfix/*']
+
+jobs:
+  deploy-to-test-bench:
+    runs-on: [self-hosted, test-bench-manager]
+    steps:
+      - name: 🏗️ Build and deploy to available test bench
+        run: |
+          # Find available test bench
+          BENCH=$(kubectl get deployments -l type=test-bench,status=available -o name | head -1)
+          
+          # Deploy feature branch
+          kubectl set image $BENCH app=registry/app:${{ github.ref_name }}
+          kubectl label deployment/${BENCH#*/} branch=${{ github.ref_name }}
+          
+          # Expose via ingress
+          echo "🌐 Available at: https://testbench-${{ github.ref_name }}.internal.com"
+```
+
+### **Test Environment Architecture**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    TEST INFRASTRUCTURE                      │
+└─────────────────────────────────────────────────────────────┘
+
+Production (main)     🚀 registry/app:latest
+├── Customer Sites    ├── Field deployments
+├── Staging          ├── Pre-production validation  
+└── Load Testing     └── Performance verification
+
+Test Stations (develop) 🏗️ registry/app:develop  
+├── Station-1        ├── Reset daily @ 6 AM
+├── Station-2        ├── QA validation environment
+├── Station-3        ├── Integration testing
+└── Station-N        └── Automated test suites
+
+Test Benches (features) 🧪 registry/app:feature-name
+├── Bench-A          ├── feature/user-auth → testbench-user-auth.internal.com
+├── Bench-B          ├── feature/api-v2 → testbench-api-v2.internal.com  
+├── Bench-C          ├── bugfix/memory-leak → testbench-memory-leak.internal.com
+└── Bench-N          └── Auto-cleanup after branch deletion
+```
+
+### **Key Benefits**
+
+- **🔄 Daily Fresh Start**: Test stations reset to develop every morning
+- **🧪 Isolated Testing**: Each feature gets dedicated test bench
+- **⚡ Fast Feedback**: Developers can test features immediately  
+- **🏗️ Staging Pipeline**: Develop branch continuously deployed for QA
+- **🚀 Production Ready**: Main branch always deployable to field
 
 ## Learning Path
 
