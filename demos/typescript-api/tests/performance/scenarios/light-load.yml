@@ -1,0 +1,102 @@
+config:
+  target: 'http://localhost:3000'
+  phases:
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm up"
+    - duration: 60
+      arrivalRate: 10
+      name: "Light load"
+  ensure:
+    p95: 200  # 95th percentile response time should be under 200ms
+    p99: 500  # 99th percentile response time should be under 500ms
+    maxErrorRate: 0.1  # Error rate should be under 0.1%
+  processor: "../scripts/performance-processor.js"
+
+scenarios:
+  - name: "API Health Check"
+    weight: 20
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.status"
+      - think: 1
+
+  - name: "Task Management Workflow"
+    weight: 60
+    flow:
+      # Create a task
+      - post:
+          url: "/api/v1/tasks"
+          json:
+            title: "Performance Test Task {{ $randomString() }}"
+            description: "Testing API performance under light load"
+            priority: "medium"
+            status: "pending"
+          capture:
+            - json: "$.data.id"
+              as: "taskId"
+          expect:
+            - statusCode: 201
+
+      # Get the created task
+      - get:
+          url: "/api/v1/tasks/{{ taskId }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.id"
+
+      # Update the task
+      - put:
+          url: "/api/v1/tasks/{{ taskId }}"
+          json:
+            status: "in-progress"
+            description: "Updated during performance test"
+          expect:
+            - statusCode: 200
+
+      # List all tasks
+      - get:
+          url: "/api/v1/tasks"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+
+      # Get task statistics
+      - get:
+          url: "/api/v1/tasks/stats"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.total"
+
+      # Delete the task
+      - delete:
+          url: "/api/v1/tasks/{{ taskId }}"
+          expect:
+            - statusCode: 204
+
+      - think: 2
+
+  - name: "Read-Heavy Operations"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/v1/tasks"
+          qs:
+            status: "pending"
+          expect:
+            - statusCode: 200
+
+      - get:
+          url: "/api/v1/tasks/stats"
+          expect:
+            - statusCode: 200
+
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: [200, 503]
+
+      - think: 1

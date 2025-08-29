@@ -1,0 +1,114 @@
+config:
+  target: 'http://localhost:3000'
+  phases:
+    - duration: 60
+      arrivalRate: 50
+      name: "Ramp up"
+    - duration: 180
+      arrivalRate: 100
+      name: "Heavy load"
+    - duration: 60
+      arrivalRate: 200
+      name: "Stress test"
+    - duration: 30
+      arrivalRate: 50
+      name: "Cool down"
+  ensure:
+    p95: 500  # 95th percentile response time should be under 500ms
+    p99: 1500  # 99th percentile response time should be under 1.5s
+    maxErrorRate: 5  # Error rate should be under 5%
+  processor: "../scripts/performance-processor.js"
+
+scenarios:
+  - name: "High-Concurrency CRUD Operations"
+    weight: 80
+    flow:
+      # Stress test with rapid CRUD operations
+      - loop:
+          count: 5
+        flow:
+          - post:
+              url: "/api/v1/tasks"
+              json:
+                title: "Stress Test Task {{ $randomString() }}"
+                description: "High load performance testing"
+                priority: "critical"
+                status: "pending"
+              capture:
+                - json: "$.data.id"
+                  as: "stressTaskId"
+              expect:
+                - statusCode: 201
+
+          # Immediate read after create
+          - get:
+              url: "/api/v1/tasks/{{ stressTaskId }}"
+              expect:
+                - statusCode: 200
+
+          # Quick update
+          - put:
+              url: "/api/v1/tasks/{{ stressTaskId }}"
+              json:
+                status: "in-progress"
+                description: "Updated under stress"
+              expect:
+                - statusCode: 200
+
+          # No think time - immediate operations
+
+      # Bulk operations
+      - get:
+          url: "/api/v1/tasks"
+          expect:
+            - statusCode: 200
+
+      - get:
+          url: "/api/v1/tasks/stats"
+          expect:
+            - statusCode: 200
+
+  - name: "Rate Limiter Stress Test"
+    weight: 15
+    flow:
+      # Test rate limiting under heavy load
+      - loop:
+          count: 150  # Exceed rate limit of 100/minute
+        flow:
+          - get:
+              url: "/health"
+              expect:
+                - statusCode: [200, 429, 503]  # Accept rate limit responses
+
+      # Wait and retry
+      - think: 5
+
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: [200, 503]
+
+  - name: "Memory and Resource Stress"
+    weight: 5
+    flow:
+      # Create many tasks quickly to stress memory
+      - loop:
+          count: 20
+        flow:
+          - post:
+              url: "/api/v1/tasks"
+              json:
+                title: "Memory Stress {{ $randomString() }}"
+                description: "{{ $randomString() }} {{ $randomString() }} {{ $randomString() }} {{ $randomString() }}"
+                priority: "critical"
+                status: "pending"
+              expect:
+                - statusCode: [201, 500, 503]  # Accept server errors under extreme load
+
+      # Check if server is still responsive
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: [200, 503]
+
+      - think: 2
