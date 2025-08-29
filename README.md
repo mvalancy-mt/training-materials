@@ -55,7 +55,7 @@ This repository specifically demonstrates:
 - Layer caching and build optimization
 - Container structure testing
 
-### CI/CD Pipeline Patterns  
+### CI/CD Pipeline Patterns
 - Automated Docker image building
 - Container security scanning
 - Multi-architecture builds
@@ -64,9 +64,18 @@ This repository specifically demonstrates:
 
 ### Language-Specific Examples
 - **Python FastAPI**: Web API with PostgreSQL, comprehensive testing
-- **TypeScript/Node.js**: Express API with MongoDB, real-time features  
+- **TypeScript/Node.js**: Express API with MongoDB, real-time features
 - **C++**: HTTP server with CMake, performance testing
 - **Go**: Microservice with Redis, high-performance patterns
+
+### 📋 CI/CD Requirements
+
+**Complete testing and quality requirements:** [CI-REQUIREMENTS.md](docs/CI-REQUIREMENTS.md)
+
+- **🔒 Local**: Pre-commit secret detection (6 patterns) + code quality
+- **⚡ Feature**: 90% coverage + security scans + fast feedback
+- **✅ Develop**: 95% coverage + comprehensive testing + container scans
+- **🚨 Main**: 100% coverage + zero vulnerabilities + production validation
 
 ## Git Branching Strategy
 
@@ -78,11 +87,11 @@ This repository demonstrates a **production-ready Git workflow** with **ruthless
 └─────────────────────────────────────────────────────────────┘
 
 main           ←─── 🔒 PROTECTED (No direct pushes)
-│              ←─── ✅ Ultra-strict CI (100% coverage required) 
+│              ←─── ✅ Ultra-strict CI (100% coverage required)
 │              ←─── 🚀 ALWAYS PRODUCTION-READY (latest Docker tag)
 │              ←─── ⚡ DEPLOY TO FIELD WITH NO NOTICE
 │
-├── develop    ←─── 🔄 Integration branch (WIP)  
+├── develop    ←─── 🔄 Integration branch (WIP)
 │   │          ←─── ✅ Comprehensive CI on push
 │   │          ←─── 🚨 Strict CI on PR to main
 │   │
@@ -98,9 +107,9 @@ main           ←─── 🔒 PROTECTED (No direct pushes)
 
 | Branch | Direct Push | CI Requirements | Deployment |
 |--------|-------------|-----------------|------------|
-| `main` | ❌ **BLOCKED** | 🚨 **Ultra-Strict**: 100% test coverage, zero vulnerabilities, container scan | 🚀 **Production (latest tag)** |
-| `develop` | ❌ **BLOCKED** | ✅ **Comprehensive**: 95% coverage, security scan, quality gates | 🚗 **All Test Vehicles (daily)** |
-| `feature/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | 🧪 **Test Benches (on-demand)** |
+| `main` | ❌ **BLOCKED** | 🚨 **Ultra-Strict**: [100% coverage, zero vulnerabilities](docs/CI-REQUIREMENTS.md#stage-4-main-branch-prs-ultra-strict-ci) | 🚀 **Production (latest tag)** |
+| `develop` | ❌ **BLOCKED** | ✅ **Comprehensive**: [95% coverage, security scans](docs/CI-REQUIREMENTS.md#stage-3-develop-branch-comprehensive-ci) | 🚗 **All Test Vehicles (daily)** |
+| `feature/*` | ✅ Allowed | ⚡ **Basic**: [90% coverage, fast feedback](docs/CI-REQUIREMENTS.md#stage-2-feature-branches-basic-ci) | 🧪 **Test Benches (on-demand)** |
 | `hotfix/*` | ✅ Allowed | 🚨 **Ultra-Strict**: Same as main branch (production-ready) | ⚠️ **Emergency Production** |
 | `bugfix/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | 🧪 **Test Benches (on-demand)** |
 | `docs/*` | ✅ Allowed | 📝 **Documentation**: Lint checks, link validation | ❌ **None** |
@@ -108,11 +117,27 @@ main           ←─── 🔒 PROTECTED (No direct pushes)
 ### Workflow Examples
 
 ```bash
-# Feature Development (temporary branch)
+# Feature Development (PUSH FIRST, WORK SECOND)
 git checkout develop
 git checkout -b feature/new-api-endpoint
-# ... make changes ...
+
+# IMMEDIATELY push to origin - others need to see what you're working on
 git push -u origin feature/new-api-endpoint
+echo "# Working on new API endpoint" > PROGRESS.md
+git add PROGRESS.md
+git commit -m "Start work on new API endpoint"
+git push
+
+# Now do the actual work - commit and push frequently
+# ... make changes ...
+git add .
+git commit -m "Add endpoint structure"
+git push
+
+# ... more changes ...
+git add .
+git commit -m "Implement validation logic"
+git push
 
 # Create PR to develop (comprehensive CI) - NO DIRECT PUSH TO DEVELOP
 gh pr create --base develop --title "Add new API endpoint"
@@ -122,8 +147,8 @@ gh pr create --base develop --title "Add new API endpoint"
 git branch -d feature/new-api-endpoint
 git push origin --delete feature/new-api-endpoint
 
-# Release Process (ultra-strict CI) 
-git checkout develop  
+# Release Process (ultra-strict CI)
+git checkout develop
 gh pr create --base main --title "Release v2.1.0"
 # ⚡ Triggers ultra-strict CI: 100% coverage, zero vulnerabilities
 
@@ -156,6 +181,16 @@ git push -u origin feature/new-feature
 - GitHub CLI (for testing workflows)
 - Language-specific tools (varies by demo)
 
+### 🚨 MANDATORY SECURITY SETUP
+
+**⚠️ REQUIRED - NO EXCEPTIONS - 2 COMMANDS ONLY:**
+
+```bash
+pip install pre-commit && pre-commit install
+```
+
+**This BLOCKS commits with secrets. See [SETUP.md](SETUP.md) for details.**
+
 ### Quick Start
 
 1. Clone this repository:
@@ -164,29 +199,85 @@ git push -u origin feature/new-feature
    cd training-materials
    ```
 
-2. Start with the Python FastAPI demo (most beginner-friendly):
+2. **🚨 MANDATORY: Enable secret protection** (choose one):
+   ```bash
+   # Option A: Manual (2 commands)
+   pip install pre-commit && pre-commit install
+
+   # Option B: Automated (1 command)
+   ./scripts/setup-repo.sh
+   ```
+
+3. Start with the Python FastAPI demo (most beginner-friendly):
    ```bash
    cd demos/python-fastapi
    docker-compose up --build
    ```
 
-3. Open http://localhost:8000/docs to see the API documentation
+4. Open http://localhost:8000/docs to see the API documentation
 
-4. Study the `.github/workflows/` files to understand the CI/CD pipeline
+5. Study the `.github/workflows/` files to understand the CI/CD pipeline
 
-5. **Experience the branching strategy**:
+6. **Experience the branching strategy**:
    ```bash
    # Create a feature branch (temporary!)
    git checkout -b feature/test-changes
-   
-   # Make some changes, push, and see the CI pipeline
+
+   # IMMEDIATELY push to origin (others need visibility)
+   git push -u origin feature/test-changes
+
+   # Make some changes, commit and push frequently
    echo "# Test" >> test.md
    git add test.md && git commit -m "Test commit"
-   git push -u origin feature/test-changes
-   
+   git push
+
    # Create PR and watch the CI/CD pipeline in action
    gh pr create --base develop --title "Test PR"
    ```
+
+## 🚨 **Critical Standard Operating Procedure**
+
+### **PUSH FIRST, WORK SECOND - No Exceptions**
+
+**Every new branch must be pushed to origin immediately after creation, before any work begins:**
+
+```bash
+# ✅ CORRECT: Push first, work second
+git checkout develop
+git checkout -b feature/user-authentication
+git push -u origin feature/user-authentication  # ← IMMEDIATE
+echo "# Working on user authentication" > PROGRESS.md
+git add PROGRESS.md
+git commit -m "Start user authentication work"
+git push
+# Now begin actual development...
+
+# ❌ WRONG: Working without pushing first
+git checkout -b feature/secret-project
+# ... hours of work ...
+# Laptop dies, work lost forever
+```
+
+### **Why This Matters**
+
+- **🔄 Visibility**: Team knows what you're working on
+- **💾 Backup**: Work is safe in origin, not just local
+- **🚫 Conflicts**: Prevents duplicate work on same feature
+- **📱 Mobility**: Can switch devices and continue work
+- **⚡ Laptop Failure**: Zero work lost - everything in origin
+- **👥 Collaboration**: Others can see progress and help
+
+### **The Golden Rule**
+
+> **"Your laptop can be destroyed at any moment and you should lose almost no work."**
+
+This means:
+- Create branch → Push immediately
+- Make changes → Commit and push
+- Continue work → Commit and push frequently
+- Never go more than 30 minutes without pushing
+
+**Commit early, commit often, push always.** 🔄
 
 ## 🚀 **Production-Ready Main Branch Philosophy**
 
@@ -195,7 +286,7 @@ git push -u origin feature/new-feature
 The `main` branch follows a **zero-notice deployment** philosophy:
 
 - **✅ Always Production-Ready**: Every commit can be deployed to production immediately
-- **🏷️ Latest Docker Tag**: All builds automatically tagged as `latest` in container registry  
+- **🏷️ Latest Docker Tag**: All builds automatically tagged as `latest` in container registry
 - **⚡ Field Deployment**: Ready for immediate customer deployment with no additional testing
 - **🛡️ Zero-Defect Policy**: Ultra-strict CI ensures no broken code ever reaches main
 - **🔒 Immutable Quality**: 100% test coverage, zero security vulnerabilities, full container scan
@@ -226,7 +317,7 @@ name: Daily Test Vehicle Reset
 on:
   schedule:
     - cron: '0 6 * * *'  # 6 AM daily
-  
+
 jobs:
   reset-test-vehicles:
     runs-on: [self-hosted, test-vehicle-controller]
@@ -235,14 +326,14 @@ jobs:
         run: |
           # Flash latest develop to all test vehicles/products
           ./scripts/flash-vehicle.sh vehicle-001 registry/app:develop
-          ./scripts/flash-vehicle.sh vehicle-002 registry/app:develop  
+          ./scripts/flash-vehicle.sh vehicle-002 registry/app:develop
           ./scripts/flash-vehicle.sh vehicle-003 registry/app:develop
-          
+
           # Verify all vehicles are operational
           ./scripts/health-check.sh vehicle-001
           ./scripts/health-check.sh vehicle-002
           ./scripts/health-check.sh vehicle-003
-          
+
           # Reset vehicle state to known baseline
           ./scripts/reset-vehicle-state.sh --all
 ```
@@ -262,11 +353,11 @@ jobs:
         run: |
           # Find available test bench
           BENCH=$(kubectl get deployments -l type=test-bench,status=available -o name | head -1)
-          
+
           # Deploy feature branch
           kubectl set image $BENCH app=registry/app:${{ github.ref_name }}
           kubectl label deployment/${BENCH#*/} branch=${{ github.ref_name }}
-          
+
           # Expose via ingress
           echo "🌐 Available at: https://testbench-${{ github.ref_name }}.internal.com"
 ```
@@ -280,10 +371,10 @@ jobs:
 
 Production (main)     🚀 registry/app:latest
 ├── Customer Sites    ├── Field deployments
-├── Staging          ├── Pre-production validation  
+├── Staging          ├── Pre-production validation
 └── Load Testing     └── Performance verification
 
-Test Vehicles (develop) 🚗 registry/app:develop  
+Test Vehicles (develop) 🚗 registry/app:develop
 ├── Vehicle-001      ├── Real product with latest firmware (daily @ 6 AM)
 ├── Vehicle-002      ├── Integration testing on actual hardware
 ├── Vehicle-003      ├── QA validation with real sensors/actuators
@@ -291,7 +382,7 @@ Test Vehicles (develop) 🚗 registry/app:develop
 
 Test Benches (features) 🧪 registry/app:feature-name
 ├── Bench-A          ├── feature/user-auth → testbench-user-auth.internal.com
-├── Bench-B          ├── feature/api-v2 → testbench-api-v2.internal.com  
+├── Bench-B          ├── feature/api-v2 → testbench-api-v2.internal.com
 ├── Bench-C          ├── bugfix/memory-leak → testbench-memory-leak.internal.com
 └── Bench-N          └── Auto-cleanup after branch deletion
 ```
@@ -300,23 +391,23 @@ Test Benches (features) 🧪 registry/app:feature-name
 
 - **🔄 Daily Fresh Start**: Test vehicles flashed with develop firmware every morning
 - **🧪 Isolated Testing**: Features tested on HIL benches before vehicle deployment
-- **⚡ Fast Feedback**: Developers can test on real hardware daily  
+- **⚡ Fast Feedback**: Developers can test on real hardware daily
 - **🚗 Real Hardware Validation**: Develop branch tested on actual products
 - **🚀 Field Ready**: Main branch proven on real vehicles before customer deployment
 
 ## Learning Path
 
 ### For Beginners
-1. Read `docs/overview.md` for Docker and CI/CD fundamentals
-2. Work through the Python FastAPI demo
-3. Study the GitHub Actions workflows
-4. Try building and testing locally with Docker
+1. **Read CI/CD requirements**: [CI-REQUIREMENTS.md](docs/CI-REQUIREMENTS.md) - understand testing levels
+2. **Setup security**: Run `pip install pre-commit && pre-commit install`
+3. **Work through Python demo**: `demos/python-fastapi` with Docker
+4. **Study GitHub workflows**: `.github/workflows/` files for CI/CD patterns
 
 ### For Intermediate Users
-1. Compare different language implementations
-2. Study advanced CI/CD features (matrix builds, security scanning)
-3. Customize workflows for your needs
-4. Explore multi-stage build optimizations
+1. **Compare language implementations**: Python → C++ → TypeScript → Go
+2. **Study advanced CI features**: Matrix builds, security scanning, coverage analysis
+3. **Customize workflows**: Adapt patterns for your specific needs
+4. **Explore container security**: Multi-stage builds, distroless images, vulnerability scanning
 
 ## Key Learning Objectives
 
@@ -328,7 +419,7 @@ By working through these materials, you will learn:
   - Container testing and validation
   - Production deployment patterns
 
-- **CI/CD Automation**  
+- **CI/CD Automation**
   - GitHub Actions workflow design
   - Automated testing strategies
   - Security scanning integration
