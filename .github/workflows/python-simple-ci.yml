@@ -54,22 +54,43 @@ jobs:
       run: |
         echo "🔍 Scanning for secrets, API keys, tokens, and passwords..."
         
+        # Count total files and lines scanned
+        FILES_SCANNED=$(find app/ -name "*.py" | wc -l)
+        LINES_SCANNED=$(find app/ -name "*.py" -exec wc -l {} + | tail -1 | awk '{print $1}' || echo "0")
+        
         # Pattern 1: Basic hardcoded secrets (avoid legitimate config patterns)
         BASIC_SECRETS=$(grep -r -E "(password|secret|key|token|api_key).*=.*['\"][^'\"]{8,}" app/ --include="*.py" | \
           grep -v -E "(os\.getenv|os\.environ|getenv|test|placeholder|example|demo|change-in-production)" || true)
+        BASIC_COUNT=$(echo "$BASIC_SECRETS" | grep -c . || echo "0")
         
         # Pattern 2: API Keys (typical formats)
         API_KEYS=$(grep -r -E "(sk-|pk-|ak-|ey-)[a-zA-Z0-9]{20,}" app/ --include="*.py" || true)
+        API_COUNT=$(echo "$API_KEYS" | grep -c . || echo "0")
         
         # Pattern 3: JWT tokens
         JWT_TOKENS=$(grep -r -E "ey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9._-]{10,}" app/ --include="*.py" || true)
+        JWT_COUNT=$(echo "$JWT_TOKENS" | grep -c . || echo "0")
         
         # Pattern 4: Password-like strings with special chars and numbers  
         PASSWORD_LIKE=$(grep -r -E "(password|secret|key|token).*=.*['\"][^'\"]*[!@#$%^&*()_+=\-\[\]|\\:;\"'<>?,./][^'\"]*[0-9]" app/ --include="*.py" | \
           grep -v -E "(os\.getenv|os\.environ|self\.|getenv|change-in-production|your-|dev-|test-|placeholder|example|demo)" || true)
+        PASSWORD_COUNT=$(echo "$PASSWORD_LIKE" | grep -c . || echo "0")
         
         # Pattern 5: AWS/Cloud credentials
         CLOUD_KEYS=$(grep -r -E "(AKIA|ASIA)[A-Z0-9]{16}|[A-Za-z0-9/+=]{40}.*aws" app/ --include="*.py" || true)
+        CLOUD_COUNT=$(echo "$CLOUD_KEYS" | grep -c . || echo "0")
+        
+        TOTAL_FOUND=$((BASIC_COUNT + API_COUNT + JWT_COUNT + PASSWORD_COUNT + CLOUD_COUNT))
+        
+        # Output detailed statistics
+        echo "files_scanned=$FILES_SCANNED" >> $GITHUB_OUTPUT
+        echo "lines_scanned=$LINES_SCANNED" >> $GITHUB_OUTPUT
+        echo "basic_secrets=$BASIC_COUNT" >> $GITHUB_OUTPUT
+        echo "api_keys=$API_COUNT" >> $GITHUB_OUTPUT
+        echo "jwt_tokens=$JWT_COUNT" >> $GITHUB_OUTPUT
+        echo "passwords=$PASSWORD_COUNT" >> $GITHUB_OUTPUT
+        echo "cloud_keys=$CLOUD_COUNT" >> $GITHUB_OUTPUT
+        echo "total_secrets=$TOTAL_FOUND" >> $GITHUB_OUTPUT
         
         TOTAL_SECRETS=""
         if [ -n "$BASIC_SECRETS" ]; then TOTAL_SECRETS="$TOTAL_SECRETS$BASIC_SECRETS\n"; fi
@@ -77,6 +98,17 @@ jobs:
         if [ -n "$JWT_TOKENS" ]; then TOTAL_SECRETS="$TOTAL_SECRETS$JWT_TOKENS\n"; fi
         if [ -n "$PASSWORD_LIKE" ]; then TOTAL_SECRETS="$TOTAL_SECRETS$PASSWORD_LIKE\n"; fi
         if [ -n "$CLOUD_KEYS" ]; then TOTAL_SECRETS="$TOTAL_SECRETS$CLOUD_KEYS\n"; fi
+        
+        # Display scan results
+        echo "📊 Secret Scan Results:"
+        echo "  📁 Files scanned: $FILES_SCANNED"
+        echo "  📄 Lines scanned: $LINES_SCANNED"
+        echo "  🔑 Basic secrets: $BASIC_COUNT"
+        echo "  🔐 API keys: $API_COUNT"
+        echo "  🎫 JWT tokens: $JWT_COUNT"
+        echo "  🔒 Password-like: $PASSWORD_COUNT"
+        echo "  ☁️ Cloud keys: $CLOUD_COUNT"
+        echo "  📈 Total found: $TOTAL_FOUND"
         
         if [ -n "$TOTAL_SECRETS" ]; then
           echo "❌ Potential secrets detected:"
@@ -89,33 +121,77 @@ jobs:
         fi
     
     - name: 🛡️ Security Analysis (Bandit)
+      id: bandit-scan
       working-directory: ${{ env.WORKING_DIR }}
       run: |
         echo "🛡️ Running comprehensive security analysis..."
+        
+        # Count files being analyzed
+        PYTHON_FILES=$(find app/ -name "*.py" | wc -l)
+        
+        # Run bandit with detailed output
         bandit -r app/ -f json -o bandit-report.json -ll || true
         
+        # Initialize counters
+        HIGH_ISSUES=0
+        MEDIUM_ISSUES=0
+        LOW_ISSUES=0
+        CONFIDENCE_HIGH=0
+        CONFIDENCE_MEDIUM=0
+        CONFIDENCE_LOW=0
+        
         if [ -s bandit-report.json ]; then
+          # Count by severity
           HIGH_ISSUES=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' bandit-report.json)
           MEDIUM_ISSUES=$(jq '[.results[] | select(.issue_severity == "MEDIUM")] | length' bandit-report.json)
           LOW_ISSUES=$(jq '[.results[] | select(.issue_severity == "LOW")] | length' bandit-report.json)
           
-          echo "📊 Security Analysis Results:"
-          echo "   🔴 High severity issues: $HIGH_ISSUES"
-          echo "   🟡 Medium severity issues: $MEDIUM_ISSUES" 
-          echo "   🟢 Low severity issues: $LOW_ISSUES"
-          
-          if [ "$HIGH_ISSUES" -gt 0 ]; then
-            echo "❌ High severity security issues found"
-            jq '.results[] | select(.issue_severity == "HIGH")' bandit-report.json
-            exit 1
-          elif [ "$MEDIUM_ISSUES" -gt 10 ]; then
-            echo "⚠️ Too many medium security issues: $MEDIUM_ISSUES (max: 10)"
-            echo "Continuing with warning"
-          fi
-          
-          echo "✅ Security scan passed"
+          # Count by confidence  
+          CONFIDENCE_HIGH=$(jq '[.results[] | select(.issue_confidence == "HIGH")] | length' bandit-report.json)
+          CONFIDENCE_MEDIUM=$(jq '[.results[] | select(.issue_confidence == "MEDIUM")] | length' bandit-report.json)
+          CONFIDENCE_LOW=$(jq '[.results[] | select(.issue_confidence == "LOW")] | length' bandit-report.json)
+        fi
+        
+        TOTAL_ISSUES=$((HIGH_ISSUES + MEDIUM_ISSUES + LOW_ISSUES))
+        
+        # Output statistics
+        echo "files_analyzed=$PYTHON_FILES" >> $GITHUB_OUTPUT
+        echo "high_severity=$HIGH_ISSUES" >> $GITHUB_OUTPUT
+        echo "medium_severity=$MEDIUM_ISSUES" >> $GITHUB_OUTPUT
+        echo "low_severity=$LOW_ISSUES" >> $GITHUB_OUTPUT
+        echo "total_issues=$TOTAL_ISSUES" >> $GITHUB_OUTPUT
+        echo "confidence_high=$CONFIDENCE_HIGH" >> $GITHUB_OUTPUT
+        echo "confidence_medium=$CONFIDENCE_MEDIUM" >> $GITHUB_OUTPUT
+        echo "confidence_low=$CONFIDENCE_LOW" >> $GITHUB_OUTPUT
+        
+        # Display detailed results
+        echo "📊 Security Analysis Results:"
+        echo "   📁 Python files analyzed: $PYTHON_FILES"
+        echo "   🔴 High severity issues: $HIGH_ISSUES"
+        echo "   🟡 Medium severity issues: $MEDIUM_ISSUES"
+        echo "   🟢 Low severity issues: $LOW_ISSUES"
+        echo "   📈 Total issues: $TOTAL_ISSUES"
+        echo ""
+        echo "📊 Confidence Levels:"
+        echo "   🎯 High confidence: $CONFIDENCE_HIGH"
+        echo "   ⚖️ Medium confidence: $CONFIDENCE_MEDIUM"
+        echo "   🤔 Low confidence: $CONFIDENCE_LOW"
+        
+        if [ "$HIGH_ISSUES" -gt 0 ]; then
+          echo "❌ High severity security issues found"
+          jq '.results[] | select(.issue_severity == "HIGH")' bandit-report.json
+          echo "score=0" >> $GITHUB_OUTPUT
+          exit 1
+        elif [ "$MEDIUM_ISSUES" -gt 10 ]; then
+          echo "⚠️ Too many medium security issues: $MEDIUM_ISSUES (max: 10)"
+          echo "score=25" >> $GITHUB_OUTPUT
+          exit 1
+        elif [ "$TOTAL_ISSUES" -eq 0 ]; then
+          echo "✅ No security issues detected"
+          echo "score=100" >> $GITHUB_OUTPUT
         else
-          echo "✅ No security issues found"
+          echo "✅ Security scan passed with minor issues"
+          echo "score=90" >> $GITHUB_OUTPUT
         fi
     
     - name: ✅ Code Quality Checks
@@ -153,8 +229,89 @@ jobs:
       working-directory: ${{ env.WORKING_DIR }}
       run: |
         echo "🧪 Running comprehensive test suite..."
-        python -m pytest app/tests/ -v --tb=short --cov=app --cov-report=term-missing
-        echo "✅ All tests passed"
+        
+        # Run tests with detailed output and collect statistics
+        python -m pytest app/tests/ -v --tb=short --cov=app --cov-report=term-missing --cov-report=json --junitxml=test-results.xml
+        
+        # Extract test statistics
+        if [ -f "test-results.xml" ]; then
+          # Parse JUnit XML for test counts
+          TESTS_TOTAL=$(grep -o 'tests="[0-9]*"' test-results.xml | grep -o '[0-9]*')
+          TESTS_FAILED=$(grep -o 'failures="[0-9]*"' test-results.xml | grep -o '[0-9]*')
+          TESTS_ERRORS=$(grep -o 'errors="[0-9]*"' test-results.xml | grep -o '[0-9]*')  
+          TESTS_SKIPPED=$(grep -o 'skipped="[0-9]*"' test-results.xml | grep -o '[0-9]*')
+          
+          TESTS_PASSED=$((TESTS_TOTAL - TESTS_FAILED - TESTS_ERRORS - TESTS_SKIPPED))
+        else
+          TESTS_TOTAL=0
+          TESTS_PASSED=0
+          TESTS_FAILED=0
+          TESTS_ERRORS=0
+          TESTS_SKIPPED=0
+        fi
+        
+        # Extract coverage statistics
+        if [ -f "coverage.json" ]; then
+          COVERAGE_PERCENT=$(jq -r '.totals.percent_covered' coverage.json | sed 's/\..*$//')
+          LINES_TOTAL=$(jq -r '.totals.num_statements' coverage.json)
+          LINES_COVERED=$(jq -r '.totals.covered_lines' coverage.json)
+          LINES_MISSING=$(jq -r '.totals.missing_lines' coverage.json)
+          BRANCHES_TOTAL=$(jq -r '.totals.num_branches // 0' coverage.json)
+          BRANCHES_COVERED=$(jq -r '.totals.covered_branches // 0' coverage.json)
+        else
+          COVERAGE_PERCENT=0
+          LINES_TOTAL=0
+          LINES_COVERED=0
+          LINES_MISSING=0
+          BRANCHES_TOTAL=0
+          BRANCHES_COVERED=0
+        fi
+        
+        # Output detailed statistics
+        echo "tests_total=$TESTS_TOTAL" >> $GITHUB_OUTPUT
+        echo "tests_passed=$TESTS_PASSED" >> $GITHUB_OUTPUT
+        echo "tests_failed=$TESTS_FAILED" >> $GITHUB_OUTPUT
+        echo "tests_errors=$TESTS_ERRORS" >> $GITHUB_OUTPUT
+        echo "tests_skipped=$TESTS_SKIPPED" >> $GITHUB_OUTPUT
+        echo "coverage_percent=$COVERAGE_PERCENT" >> $GITHUB_OUTPUT
+        echo "lines_total=$LINES_TOTAL" >> $GITHUB_OUTPUT
+        echo "lines_covered=$LINES_COVERED" >> $GITHUB_OUTPUT
+        echo "lines_missing=$LINES_MISSING" >> $GITHUB_OUTPUT
+        echo "branches_total=$BRANCHES_TOTAL" >> $GITHUB_OUTPUT
+        echo "branches_covered=$BRANCHES_COVERED" >> $GITHUB_OUTPUT
+        
+        # Display comprehensive test results
+        echo "📊 Test Execution Results:"
+        echo "   🧪 Total tests: $TESTS_TOTAL"
+        echo "   ✅ Passed: $TESTS_PASSED"
+        echo "   ❌ Failed: $TESTS_FAILED"
+        echo "   💥 Errors: $TESTS_ERRORS"
+        echo "   ⏭️ Skipped: $TESTS_SKIPPED"
+        echo ""
+        echo "📊 Code Coverage Analysis:"
+        echo "   📈 Coverage: ${COVERAGE_PERCENT}%"
+        echo "   📄 Total lines: $LINES_TOTAL"
+        echo "   ✅ Lines covered: $LINES_COVERED"
+        echo "   ❌ Lines missing: $LINES_MISSING"
+        echo "   🌲 Branches total: $BRANCHES_TOTAL"
+        echo "   ✅ Branches covered: $BRANCHES_COVERED"
+        
+        # Determine score based on results
+        if [ "$TESTS_FAILED" -gt 0 ] || [ "$TESTS_ERRORS" -gt 0 ]; then
+          echo "❌ Test failures detected!"
+          echo "score=0" >> $GITHUB_OUTPUT
+          exit 1
+        elif [ "$COVERAGE_PERCENT" -lt 90 ]; then
+          echo "⚠️ Code coverage below 90%: ${COVERAGE_PERCENT}%"
+          echo "score=70" >> $GITHUB_OUTPUT
+          exit 1
+        elif [ "$COVERAGE_PERCENT" -eq 100 ]; then
+          echo "✅ Perfect test coverage: 100%"
+          echo "score=100" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Excellent test coverage: ${COVERAGE_PERCENT}%"
+          echo "score=95" >> $GITHUB_OUTPUT
+        fi
     
     - name: ⏱️ Calculate duration
       id: timing
@@ -246,27 +403,155 @@ jobs:
         # Get image size
         IMAGE_SIZE=$(docker images python-fastapi:latest --format "table {{.Size}}" | tail -n 1)
         echo "📦 Docker image size: $IMAGE_SIZE"
+        
+        # Analyze Docker image architecture  
+        echo "🔍 Analyzing Docker image architecture..."
+        
+        # Get base image layers and dependencies
+        docker history python-fastapi:latest --format "table {{.CreatedBy}}" | head -10 > docker-layers.txt
+        BASE_IMAGES=$(docker history python-fastapi:latest --format "{{.CreatedBy}}" | grep -E "(FROM|COPY --from)" | head -5 | tr '\n' '; ')
+        
+        # Extract port mappings from Dockerfile
+        EXPOSED_PORTS=$(docker inspect python-fastapi:latest | jq -r '.[0].Config.ExposedPorts | keys[]?' 2>/dev/null | tr '\n' ' ' || echo "8000/tcp")
+        
+        # Get environment variables that indicate external dependencies
+        ENV_VARS=$(docker inspect python-fastapi:latest | jq -r '.[0].Config.Env[]?' | grep -E "(DATABASE_URL|REDIS_URL|MYSQL|POSTGRES|MONGO)" | head -3 | tr '\n' '; ' || echo "")
+        
+        # Check for volume mounts
+        VOLUMES=$(docker inspect python-fastapi:latest | jq -r '.[0].Config.Volumes | keys[]?' 2>/dev/null | tr '\n' ' ' || echo "none")
+        
+        # Get working directory and user
+        WORKDIR=$(docker inspect python-fastapi:latest | jq -r '.[0].Config.WorkingDir' 2>/dev/null || echo "/")
+        USER=$(docker inspect python-fastapi:latest | jq -r '.[0].Config.User' 2>/dev/null || echo "root")
+        
+        # Count image layers
+        LAYER_COUNT=$(docker history python-fastapi:latest --quiet | wc -l)
+        
+        # Output architecture details
         echo "size=$IMAGE_SIZE" >> $GITHUB_OUTPUT
+        echo "exposed_ports=$EXPOSED_PORTS" >> $GITHUB_OUTPUT
+        echo "volumes=$VOLUMES" >> $GITHUB_OUTPUT
+        echo "workdir=$WORKDIR" >> $GITHUB_OUTPUT
+        echo "user=$USER" >> $GITHUB_OUTPUT
+        echo "layer_count=$LAYER_COUNT" >> $GITHUB_OUTPUT
+        echo "base_images=${BASE_IMAGES:-'python:3.11-slim'}" >> $GITHUB_OUTPUT
+        echo "env_dependencies=${ENV_VARS:-'none'}" >> $GITHUB_OUTPUT
+        
+        # Display architecture analysis
+        echo "📊 Docker Architecture Analysis:"
+        echo "   📦 Image size: $IMAGE_SIZE"
+        echo "   🔗 Exposed ports: $EXPOSED_PORTS"
+        echo "   📁 Volumes: $VOLUMES" 
+        echo "   📂 Working directory: $WORKDIR"
+        echo "   👤 User: $USER"
+        echo "   🏗️ Layer count: $LAYER_COUNT"
+        echo "   🎯 Base images: ${BASE_IMAGES:-'python:3.11-slim'}"
+        echo "   🔌 External dependencies: ${ENV_VARS:-'none'}"
         
         echo "✅ Docker image built successfully"
     
     - name: 🔒 Container Security Scan
+      id: container-scan
       working-directory: ${{ env.WORKING_DIR }}
       run: |
         echo "🔒 Scanning container for vulnerabilities..."
-        # Basic container scan (in production, use tools like Trivy)
+        
+        # Run Trivy scan with JSON output for statistics
         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-          -v $PWD:/tmp/.cache/ aquasec/trivy:latest image python-fastapi:latest || true
-        echo "✅ Container security scan completed"
+          -v $PWD:/tmp/.cache/ \
+          aquasec/trivy:latest image --format json --output trivy-report.json python-fastapi:latest || true
+          
+        # Also run human-readable scan for display
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+          -v $PWD:/tmp/.cache/ \
+          aquasec/trivy:latest image python-fastapi:latest || true
+        
+        # Parse vulnerability statistics if report exists
+        if [ -f "trivy-report.json" ]; then
+          # Count vulnerabilities by severity
+          CRITICAL_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-report.json 2>/dev/null || echo "0")
+          HIGH_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-report.json 2>/dev/null || echo "0")
+          MEDIUM_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "MEDIUM")] | length' trivy-report.json 2>/dev/null || echo "0")
+          LOW_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "LOW")] | length' trivy-report.json 2>/dev/null || echo "0")
+          UNKNOWN_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "UNKNOWN")] | length' trivy-report.json 2>/dev/null || echo "0")
+          
+          # Count by fix status
+          FIXABLE_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.FixedVersion != "")] | length' trivy-report.json 2>/dev/null || echo "0")
+          UNFIXABLE_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.FixedVersion == "")] | length' trivy-report.json 2>/dev/null || echo "0")
+          
+          TOTAL_VULNS=$((CRITICAL_VULNS + HIGH_VULNS + MEDIUM_VULNS + LOW_VULNS + UNKNOWN_VULNS))
+        else
+          CRITICAL_VULNS=0
+          HIGH_VULNS=0
+          MEDIUM_VULNS=0
+          LOW_VULNS=0
+          UNKNOWN_VULNS=0
+          FIXABLE_VULNS=0
+          UNFIXABLE_VULNS=0
+          TOTAL_VULNS=0
+        fi
+        
+        # Output statistics
+        echo "critical_vulns=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
+        echo "high_vulns=$HIGH_VULNS" >> $GITHUB_OUTPUT
+        echo "medium_vulns=$MEDIUM_VULNS" >> $GITHUB_OUTPUT
+        echo "low_vulns=$LOW_VULNS" >> $GITHUB_OUTPUT
+        echo "unknown_vulns=$UNKNOWN_VULNS" >> $GITHUB_OUTPUT
+        echo "total_vulns=$TOTAL_VULNS" >> $GITHUB_OUTPUT
+        echo "fixable_vulns=$FIXABLE_VULNS" >> $GITHUB_OUTPUT
+        echo "unfixable_vulns=$UNFIXABLE_VULNS" >> $GITHUB_OUTPUT
+        
+        # Display detailed results
+        echo "📊 Container Vulnerability Scan Results:"
+        echo "   🔥 Critical: $CRITICAL_VULNS"
+        echo "   🔴 High: $HIGH_VULNS"
+        echo "   🟡 Medium: $MEDIUM_VULNS"
+        echo "   🟢 Low: $LOW_VULNS"
+        echo "   ❓ Unknown: $UNKNOWN_VULNS"
+        echo "   📈 Total vulnerabilities: $TOTAL_VULNS"
+        echo ""
+        echo "📊 Remediation Status:"
+        echo "   🔧 Fixable: $FIXABLE_VULNS"
+        echo "   ⚠️ Unfixable: $UNFIXABLE_VULNS"
+        
+        # Determine scan result and score
+        if [ "$CRITICAL_VULNS" -gt 0 ]; then
+          echo "❌ Critical vulnerabilities found in container!"
+          echo "score=0" >> $GITHUB_OUTPUT
+          exit 1
+        elif [ "$HIGH_VULNS" -gt 5 ]; then
+          echo "⚠️ Too many high-severity vulnerabilities: $HIGH_VULNS"
+          echo "score=30" >> $GITHUB_OUTPUT
+          exit 1  
+        elif [ "$TOTAL_VULNS" -eq 0 ]; then
+          echo "✅ No vulnerabilities detected in container"
+          echo "score=100" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Container security scan passed with acceptable risk"
+          echo "score=85" >> $GITHUB_OUTPUT
+        fi
     
     - name: 🧪 Container Health Tests
+      id: health-tests
       working-directory: ${{ env.WORKING_DIR }}
       run: |
-        echo "🧪 Testing container health and endpoints..."
+        echo "🧪 Testing container health and network dependencies..."
         
-        # Start container
+        # Check container network requirements
+        echo "🔍 Analyzing container networking requirements..."
+        
+        # Start container with network analysis
         docker run --rm -d -p 8000:8000 --name test-container python-fastapi:latest
         sleep 10
+        
+        # Check what ports are actually listening
+        LISTENING_PORTS=$(docker exec test-container netstat -tuln 2>/dev/null | grep LISTEN || echo "netstat not available")
+        
+        # Test external connectivity requirements
+        NETWORK_MODE=$(docker inspect test-container | jq -r '.[0].HostConfig.NetworkMode' 2>/dev/null || echo "default")
+        
+        # Check for database/external service dependencies
+        DB_CONNECTIONS=$(docker exec test-container netstat -tn 2>/dev/null | grep -E "(3306|5432|27017|6379)" || echo "none")
         
         # Health check
         curl -f http://localhost:8000/health/ || exit 1
@@ -277,6 +562,16 @@ jobs:
           -H "Content-Type: application/json" \
           -d '{"title": "Test Task", "description": "Container test"}' || exit 1
         echo "✅ API endpoints working"
+        
+        # Output networking details
+        echo "network_mode=$NETWORK_MODE" >> $GITHUB_OUTPUT
+        echo "listening_ports=${LISTENING_PORTS:-'8000'}" >> $GITHUB_OUTPUT  
+        echo "db_connections=${DB_CONNECTIONS:-'none'}" >> $GITHUB_OUTPUT
+        
+        echo "📊 Container Network Analysis:"
+        echo "   🌐 Network mode: $NETWORK_MODE"
+        echo "   🔌 Listening ports: ${LISTENING_PORTS:-'8000'}"
+        echo "   🗄️ Database connections: ${DB_CONNECTIONS:-'none'}"
         
         # Cleanup
         docker stop test-container
@@ -304,11 +599,26 @@ jobs:
         echo "| Stage | Status | Duration | Score | Details |" >> $GITHUB_STEP_SUMMARY
         echo "|-------|--------|----------|-------|---------|" >> $GITHUB_STEP_SUMMARY
         
-        # Security & Quality Analysis
+        # Security & Quality Analysis with detailed breakdown
         if [ "${{ needs.security-and-quality.result }}" == "success" ]; then
-          echo "| 🔒 Security & Quality | ✅ **PASSED** | ${{ needs.security-and-quality.outputs.duration }} | 🟢 95/100 | All security checks passed, no secrets detected |" >> $GITHUB_STEP_SUMMARY
+          SECRET_DETAILS=""
+          if [ "${{ needs.security-and-quality.outputs.files_scanned }}" != "" ]; then
+            SECRET_DETAILS="🔍 Secrets: ${{ needs.security-and-quality.outputs.total_secrets }}/5 patterns in ${{ needs.security-and-quality.outputs.files_scanned }} files, "
+          fi
+          
+          BANDIT_DETAILS=""
+          if [ "${{ needs.security-and-quality.outputs.high_severity }}" != "" ]; then
+            BANDIT_DETAILS="🛡️ Bandit: ${{ needs.security-and-quality.outputs.total_issues }} issues (H:${{ needs.security-and-quality.outputs.high_severity }} M:${{ needs.security-and-quality.outputs.medium_severity }} L:${{ needs.security-and-quality.outputs.low_severity }}), "
+          fi
+          
+          TEST_DETAILS=""
+          if [ "${{ needs.security-and-quality.outputs.tests_total }}" != "" ]; then
+            TEST_DETAILS="🧪 Tests: ${{ needs.security-and-quality.outputs.tests_passed }}/${{ needs.security-and-quality.outputs.tests_total }} passed, ${{ needs.security-and-quality.outputs.coverage_percent }}% coverage"
+          fi
+          
+          echo "| 🔒 Security & Quality | ✅ **PASSED** | ${{ needs.security-and-quality.outputs.duration }} | 🟢 95/100 | ${SECRET_DETAILS}${BANDIT_DETAILS}${TEST_DETAILS} |" >> $GITHUB_STEP_SUMMARY
         else
-          echo "| 🔒 Security & Quality | ❌ **FAILED** | ${{ needs.security-and-quality.outputs.duration }} | 🔴 0/100 | Security issues or quality problems detected |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔒 Security & Quality | ❌ **FAILED** | ${{ needs.security-and-quality.outputs.duration }} | 🔴 0/100 | Security issues or quality problems detected - check logs for details |" >> $GITHUB_STEP_SUMMARY
         fi
         
         # Strict PR Checks (only for PRs to main)
@@ -325,9 +635,16 @@ jobs:
         # Container Pipeline (only on main)
         if [ "${{ github.ref }}" == "refs/heads/main" ]; then
           if [ "${{ needs.container-pipeline.result }}" == "success" ]; then
-            echo "| 🐳 Container Pipeline | ✅ **PASSED** | ${{ needs.container-pipeline.outputs.container-duration }} | 🟢 90/100 | Image: ${{ needs.container-pipeline.outputs.image-size }}, Security scan clean |" >> $GITHUB_STEP_SUMMARY
+            CONTAINER_DETAILS=""
+            if [ "${{ needs.container-pipeline.outputs.total_vulns }}" != "" ]; then
+              CONTAINER_DETAILS="📦 Image: ${{ needs.container-pipeline.outputs.image-size }}, 🔒 Vulnerabilities: ${{ needs.container-pipeline.outputs.total_vulns }} (🔥${{ needs.container-pipeline.outputs.critical_vulns }} 🔴${{ needs.container-pipeline.outputs.high_vulns }} 🟡${{ needs.container-pipeline.outputs.medium_vulns }} 🟢${{ needs.container-pipeline.outputs.low_vulns }})"
+            else
+              CONTAINER_DETAILS="📦 Image: ${{ needs.container-pipeline.outputs.image-size }}, Security scan completed"
+            fi
+            
+            echo "| 🐳 Container Pipeline | ✅ **PASSED** | ${{ needs.container-pipeline.outputs.container-duration }} | 🟢 90/100 | ${CONTAINER_DETAILS} |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| 🐳 Container Pipeline | ❌ **FAILED** | ${{ needs.container-pipeline.outputs.container-duration }} | 🔴 0/100 | Container build or security issues |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🐳 Container Pipeline | ❌ **FAILED** | ${{ needs.container-pipeline.outputs.container-duration }} | 🔴 0/100 | Container build or critical security vulnerabilities detected |" >> $GITHUB_STEP_SUMMARY
           fi
         else
           echo "| 🐳 Container Pipeline | ⏭️ **SKIPPED** | - | - | Only runs on main branch pushes |" >> $GITHUB_STEP_SUMMARY
@@ -343,6 +660,101 @@ jobs:
         echo "- **Files Changed**: ${{ github.event.head_commit.modified }} modified, ${{ github.event.head_commit.added }} added, ${{ github.event.head_commit.removed }} removed" >> $GITHUB_STEP_SUMMARY
         echo "- **Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
         echo "- **Workflow Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+        
+        # Add detailed security metrics section  
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 🔒 Security Analysis Details" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.security-and-quality.outputs.files_scanned }}" != "" ]; then
+          echo "### 🔍 Secret Detection Scan" >> $GITHUB_STEP_SUMMARY
+          echo "- **Files Scanned**: ${{ needs.security-and-quality.outputs.files_scanned }} Python files" >> $GITHUB_STEP_SUMMARY
+          echo "- **Lines Analyzed**: ${{ needs.security-and-quality.outputs.lines_scanned }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🔑 Basic Secrets**: ${{ needs.security-and-quality.outputs.basic_secrets }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🔐 API Keys**: ${{ needs.security-and-quality.outputs.api_keys }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🎫 JWT Tokens**: ${{ needs.security-and-quality.outputs.jwt_tokens }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🔒 Passwords**: ${{ needs.security-and-quality.outputs.passwords }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **☁️ Cloud Keys**: ${{ needs.security-and-quality.outputs.cloud_keys }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.security-and-quality.outputs.files_analyzed }}" != "" ]; then
+          echo "### 🛡️ Bandit Security Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "- **Files Analyzed**: ${{ needs.security-and-quality.outputs.files_analyzed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🔴 High Severity**: ${{ needs.security-and-quality.outputs.high_severity }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🟡 Medium Severity**: ${{ needs.security-and-quality.outputs.medium_severity }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🟢 Low Severity**: ${{ needs.security-and-quality.outputs.low_severity }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🎯 High Confidence**: ${{ needs.security-and-quality.outputs.confidence_high }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **⚖️ Medium Confidence**: ${{ needs.security-and-quality.outputs.confidence_medium }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🤔 Low Confidence**: ${{ needs.security-and-quality.outputs.confidence_low }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.security-and-quality.outputs.tests_total }}" != "" ]; then
+          echo "### 🧪 Test & Coverage Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Tests**: ${{ needs.security-and-quality.outputs.tests_total }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **✅ Passed**: ${{ needs.security-and-quality.outputs.tests_passed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **❌ Failed**: ${{ needs.security-and-quality.outputs.tests_failed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **💥 Errors**: ${{ needs.security-and-quality.outputs.tests_errors }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **⏭️ Skipped**: ${{ needs.security-and-quality.outputs.tests_skipped }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **📈 Coverage**: ${{ needs.security-and-quality.outputs.coverage_percent }}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **📄 Lines Covered**: ${{ needs.security-and-quality.outputs.lines_covered }}/${{ needs.security-and-quality.outputs.lines_total }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🌲 Branch Coverage**: ${{ needs.security-and-quality.outputs.branches_covered }}/${{ needs.security-and-quality.outputs.branches_total }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          echo "### 🐳 Container Architecture & Security" >> $GITHUB_STEP_SUMMARY
+          
+          # Docker Architecture Details
+          echo "#### 🏗️ Docker Architecture" >> $GITHUB_STEP_SUMMARY
+          echo "- **📦 Image Size**: ${{ needs.container-pipeline.outputs.size }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🔗 Exposed Ports**: \`${{ needs.container-pipeline.outputs.exposed_ports }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **📁 Volumes**: \`${{ needs.container-pipeline.outputs.volumes }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **📂 Working Directory**: \`${{ needs.container-pipeline.outputs.workdir }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **👤 User**: \`${{ needs.container-pipeline.outputs.user }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **🏗️ Layer Count**: ${{ needs.container-pipeline.outputs.layer_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **🎯 Base Images**: \`${{ needs.container-pipeline.outputs.base_images }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **🔌 External Dependencies**: \`${{ needs.container-pipeline.outputs.env_dependencies }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Network Configuration
+          echo "#### 🌐 Network Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **🌐 Network Mode**: \`${{ needs.container-pipeline.outputs.network_mode }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **🔌 Listening Ports**: \`${{ needs.container-pipeline.outputs.listening_ports }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **🗄️ Database Connections**: \`${{ needs.container-pipeline.outputs.db_connections }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Security Scan Results (if available)
+          if [ "${{ needs.container-pipeline.outputs.total_vulns }}" != "" ]; then
+            echo "#### 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
+            echo "- **🔥 Critical**: ${{ needs.container-pipeline.outputs.critical_vulns }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🔴 High**: ${{ needs.container-pipeline.outputs.high_vulns }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🟡 Medium**: ${{ needs.container-pipeline.outputs.medium_vulns }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🟢 Low**: ${{ needs.container-pipeline.outputs.low_vulns }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **❓ Unknown**: ${{ needs.container-pipeline.outputs.unknown_vulns }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **📈 Total Vulnerabilities**: ${{ needs.container-pipeline.outputs.total_vulns }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🔧 Fixable**: ${{ needs.container-pipeline.outputs.fixable_vulns }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **⚠️ Unfixable**: ${{ needs.container-pipeline.outputs.unfixable_vulns }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Deployment Requirements
+          echo "#### 🚀 Deployment Requirements" >> $GITHUB_STEP_SUMMARY
+          echo "- **Port Mapping**: \`-p 8000:8000\` (external:internal)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Required Networks**: Default bridge network (or custom if specified)" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.container-pipeline.outputs.volumes }}" != "none" ]; then
+            echo "- **Volume Mounts**: \`${{ needs.container-pipeline.outputs.volumes }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Volume Mounts**: None required" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ needs.container-pipeline.outputs.env_dependencies }}" != "none" ]; then
+            echo "- **⚠️ External Services**: ${{ needs.container-pipeline.outputs.env_dependencies }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **🔔 Note**: Ensure shared services are available before deployment" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **✅ Self-contained**: No external service dependencies" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
         
         # Overall status
         echo "" >> $GITHUB_STEP_SUMMARY

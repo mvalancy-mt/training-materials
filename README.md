@@ -68,6 +68,61 @@ This repository specifically demonstrates:
 - **C++**: HTTP server with CMake, performance testing
 - **Go**: Microservice with Redis, high-performance patterns
 
+## Git Branching Strategy
+
+This repository demonstrates a **production-ready Git workflow** with **ruthless branch management** and **strict CI/CD enforcement**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     GIT BRANCHING STRATEGY                  │
+└─────────────────────────────────────────────────────────────┘
+
+main           ←─── 🔒 PROTECTED (No direct pushes)
+│              ←─── ✅ Ultra-strict CI (100% coverage required)
+│              ←─── 🚀 Automatic production deployment
+│
+├── develop    ←─── 🔄 Integration branch (WIP)  
+│   │          ←─── ✅ Comprehensive CI on push
+│   │          ←─── 🚨 Strict CI on PR to main
+│   │
+│   ├── feature/user-auth     ⚡ TEMPORARY (deleted after merge)
+│   ├── feature/api-v2        ⚡ TEMPORARY (deleted after merge)
+│   ├── hotfix/security-fix   ⚡ TEMPORARY (deleted after merge)
+│   └── bugfix/login-bug      ⚡ TEMPORARY (deleted after merge)
+│
+└── 💀 All feature branches deleted immediately after merge
+```
+
+### Branch Protection & CI Strictness Levels
+
+| Branch | Direct Push | CI Requirements | Deployment |
+|--------|-------------|-----------------|------------|
+| `main` | ❌ **BLOCKED** | 🚨 **Ultra-Strict**: 100% test coverage, zero vulnerabilities, container scan | 🚀 **Auto-deploy** |
+| `develop` | ✅ Allowed | ✅ **Comprehensive**: 95% coverage, security scan, quality gates | 📦 **Staging** |
+| `feature/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | ❌ **None** |
+
+### Workflow Examples
+
+```bash
+# Feature Development (temporary branch)
+git checkout develop
+git checkout -b feature/new-api-endpoint
+# ... make changes ...
+git push -u origin feature/new-api-endpoint
+
+# Create PR to develop (basic CI)
+gh pr create --base develop --title "Add new API endpoint"
+
+# After merge: RUTHLESS DELETION
+git branch -d feature/new-api-endpoint
+git push origin --delete feature/new-api-endpoint
+
+# Release Process (ultra-strict CI)
+git checkout develop  
+gh pr create --base main --title "Release v2.1.0"
+# ⚡ Triggers ultra-strict CI with 100% coverage requirement
+```
+
 ## Getting Started
 
 ### Prerequisites
@@ -94,6 +149,20 @@ This repository specifically demonstrates:
 3. Open http://localhost:8000/docs to see the API documentation
 
 4. Study the `.github/workflows/` files to understand the CI/CD pipeline
+
+5. **Experience the branching strategy**:
+   ```bash
+   # Create a feature branch (temporary!)
+   git checkout -b feature/test-changes
+   
+   # Make some changes, push, and see the CI pipeline
+   echo "# Test" >> test.md
+   git add test.md && git commit -m "Test commit"
+   git push -u origin feature/test-changes
+   
+   # Create PR and watch the CI/CD pipeline in action
+   gh pr create --base develop --title "Test PR"
+   ```
 
 ## Learning Path
 
