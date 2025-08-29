@@ -1,0 +1,427 @@
+name: Python FastAPI CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'demos/python-fastapi/**'
+      - '.github/workflows/python-fastapi-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'demos/python-fastapi/**'
+      - '.github/workflows/python-fastapi-ci.yml'
+
+env:
+  WORKING_DIR: demos/python-fastapi
+  IMAGE_NAME: python-fastapi
+  MAX_IMAGE_SIZE_MB: 100
+
+jobs:
+  # Pre-build Security and Quality Checks
+  pre-build-checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: '${{ env.WORKING_DIR }}/requirements-dev.txt'
+    
+    - name: Install dependencies
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+    
+    - name: Check for secrets in code
+      run: |
+        # Check for potential secrets, API keys, passwords
+        grep -r -i "password\|api_key\|secret\|token" ${{ env.WORKING_DIR }}/app/ --include="*.py" || true
+        if grep -r -E "(password|api_key|secret|token).*=.*['\"][^'\"]{8,}" ${{ env.WORKING_DIR }}/app/ --include="*.py"; then
+          echo "❌ Potential hardcoded secrets found!"
+          exit 1
+        else
+          echo "✅ No hardcoded secrets detected"
+        fi
+    
+    - name: Dependency vulnerability scan
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        pip install safety
+        safety check --json --output safety-report.json || true
+        if [ -s safety-report.json ] && [ "$(jq length safety-report.json)" -gt 0 ]; then
+          echo "❌ Vulnerable dependencies found!"
+          cat safety-report.json
+          exit 1
+        else
+          echo "✅ No vulnerable dependencies found"
+        fi
+    
+    - name: Code quality checks
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        echo "🔍 Running code quality checks..."
+        
+        # Format check
+        black --check --diff app/ || (echo "❌ Code formatting issues found" && exit 1)
+        echo "✅ Code formatting OK"
+        
+        # Import sorting
+        isort --check-only --diff app/ || (echo "❌ Import sorting issues found" && exit 1)
+        echo "✅ Import sorting OK"
+        
+        # Linting
+        flake8 app/ || (echo "❌ Linting issues found" && exit 1)
+        echo "✅ Linting OK"
+        
+        # Type checking
+        mypy app/ --ignore-missing-imports || (echo "❌ Type checking issues found" && exit 1)
+        echo "✅ Type checking OK"
+    
+    - name: Security scanning (Bandit)
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        bandit -r app/ -f json -o bandit-report.json
+        if [ -s bandit-report.json ]; then
+          HIGH_ISSUES=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' bandit-report.json)
+          MEDIUM_ISSUES=$(jq '[.results[] | select(.issue_severity == "MEDIUM")] | length' bandit-report.json)
+          
+          if [ "$HIGH_ISSUES" -gt 0 ]; then
+            echo "❌ High severity security issues found: $HIGH_ISSUES"
+            jq '.results[] | select(.issue_severity == "HIGH")' bandit-report.json
+            exit 1
+          elif [ "$MEDIUM_ISSUES" -gt 5 ]; then
+            echo "❌ Too many medium security issues: $MEDIUM_ISSUES (max: 5)"
+            exit 1
+          else
+            echo "✅ Security scan passed (High: $HIGH_ISSUES, Medium: $MEDIUM_ISSUES)"
+          fi
+        fi
+    
+    - name: Test structure validation
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        echo "🧪 Validating test structure..."
+        
+        # Check if tests exist
+        if [ ! -d "app/tests" ]; then
+          echo "❌ Tests directory not found!"
+          exit 1
+        fi
+        
+        # Count test files
+        TEST_FILES=$(find app/tests -name "test_*.py" | wc -l)
+        if [ "$TEST_FILES" -lt 3 ]; then
+          echo "❌ Insufficient test files found: $TEST_FILES (minimum: 3)"
+          exit 1
+        fi
+        
+        echo "✅ Test structure validated ($TEST_FILES test files found)"
+    
+    - name: Upload security scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: ${{ env.WORKING_DIR }}/bandit-report.json
+      continue-on-error: true
+
+  # Testing
+  test:
+    runs-on: ubuntu-latest
+    needs: pre-build-checks
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: '${{ env.WORKING_DIR }}/requirements-dev.txt'
+    
+    - name: Install dependencies
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+    
+    - name: Run tests with coverage
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        pytest app/tests/ -v \
+          --cov=app \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-report=term-missing \
+          --junitxml=pytest-report.xml \
+          --tb=short
+    
+    - name: Coverage validation
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        COVERAGE=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); print(float(tree.getroot().attrib['line-rate']) * 100)")
+        echo "Code coverage: ${COVERAGE}%"
+        if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+          echo "❌ Code coverage below 80%: ${COVERAGE}%"
+          exit 1
+        else
+          echo "✅ Code coverage meets minimum threshold: ${COVERAGE}%"
+        fi
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ${{ env.WORKING_DIR }}/coverage.xml
+        flags: python-fastapi
+        name: python-fastapi-coverage
+
+  # Docker Build and Security Scan
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        docker build -t ${{ env.IMAGE_NAME }}:test .
+        
+        # Get image size
+        IMAGE_SIZE_BYTES=$(docker image inspect ${{ env.IMAGE_NAME }}:test --format='{{.Size}}')
+        IMAGE_SIZE_MB=$((IMAGE_SIZE_BYTES / 1024 / 1024))
+        
+        echo "Docker image size: ${IMAGE_SIZE_MB}MB"
+        echo "IMAGE_SIZE_MB=${IMAGE_SIZE_MB}" >> $GITHUB_ENV
+        
+        if [ "$IMAGE_SIZE_MB" -gt "${{ env.MAX_IMAGE_SIZE_MB }}" ]; then
+          echo "❌ Docker image too large: ${IMAGE_SIZE_MB}MB (max: ${{ env.MAX_IMAGE_SIZE_MB }}MB)"
+          exit 1
+        else
+          echo "✅ Docker image size acceptable: ${IMAGE_SIZE_MB}MB"
+        fi
+    
+    - name: Test Docker image functionality
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        echo "🐳 Testing Docker container functionality..."
+        
+        # Start container
+        CONTAINER_ID=$(docker run -d -p 8080:8000 ${{ env.IMAGE_NAME }}:test)
+        echo "Started container: $CONTAINER_ID"
+        
+        # Wait for startup
+        sleep 15
+        
+        # Test health endpoint
+        if curl -f --max-time 10 http://localhost:8080/health/; then
+          echo "✅ Health check passed"
+        else
+          echo "❌ Health check failed"
+          docker logs $CONTAINER_ID
+          exit 1
+        fi
+        
+        # Test API functionality
+        if curl -f --max-time 10 http://localhost:8080/; then
+          echo "✅ API root endpoint accessible"
+        else
+          echo "❌ API root endpoint failed"
+          docker logs $CONTAINER_ID
+          exit 1
+        fi
+        
+        # Test task creation
+        TASK_RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/tasks/ \
+          -H "Content-Type: application/json" \
+          -d '{"title":"Test Task","description":"CI/CD Test","priority":"high"}')
+        
+        if echo "$TASK_RESPONSE" | jq -e '.id' > /dev/null; then
+          echo "✅ Task creation successful"
+        else
+          echo "❌ Task creation failed: $TASK_RESPONSE"
+          exit 1
+        fi
+        
+        # Cleanup
+        docker stop $CONTAINER_ID
+        docker rm $CONTAINER_ID
+    
+    - name: Network security scan
+      run: |
+        echo "🔒 Checking container network security..."
+        
+        # Start container for network analysis
+        CONTAINER_ID=$(docker run -d ${{ env.IMAGE_NAME }}:test)
+        
+        # Check open ports
+        OPEN_PORTS=$(docker port $CONTAINER_ID | wc -l)
+        echo "Open ports: $OPEN_PORTS"
+        
+        # Check for suspicious network configurations
+        if docker exec $CONTAINER_ID netstat -tuln 2>/dev/null | grep -E ':22|:23|:3389'; then
+          echo "❌ Suspicious ports detected (SSH, Telnet, RDP)"
+          docker stop $CONTAINER_ID
+          docker rm $CONTAINER_ID
+          exit 1
+        else
+          echo "✅ No suspicious network ports detected"
+        fi
+        
+        # Cleanup
+        docker stop $CONTAINER_ID
+        docker rm $CONTAINER_ID
+    
+    - name: Container security scan (Trivy)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ env.IMAGE_NAME }}:test'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'HIGH,CRITICAL'
+        exit-code: 1
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Container Structure Tests
+  container-structure-test:
+    runs-on: ubuntu-latest
+    needs: docker-build
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      working-directory: ${{ env.WORKING_DIR }}
+      run: docker build -t ${{ env.IMAGE_NAME }}:test .
+    
+    - name: Run container structure tests
+      uses: plexsystems/container-structure-test-action@v0.3.0
+      with:
+        image: '${{ env.IMAGE_NAME }}:test'
+        config: '${{ env.WORKING_DIR }}/container-structure-test.yaml'
+
+  # Performance Testing
+  performance-test:
+    runs-on: ubuntu-latest
+    needs: container-structure-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build and start services
+      working-directory: ${{ env.WORKING_DIR }}
+      run: |
+        docker-compose up -d
+        sleep 30
+    
+    - name: Install performance testing tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y apache2-utils jq bc
+    
+    - name: Performance benchmarks
+      run: |
+        echo "🚀 Running performance benchmarks..."
+        
+        # Health endpoint performance
+        echo "Testing health endpoint..."
+        ab -n 100 -c 10 -q http://localhost:8000/health/ > health_perf.txt
+        HEALTH_RPS=$(grep "Requests per second:" health_perf.txt | awk '{print $4}' | cut -d'.' -f1)
+        echo "Health endpoint RPS: $HEALTH_RPS"
+        
+        if [ "$HEALTH_RPS" -lt 100 ]; then
+          echo "❌ Health endpoint performance below threshold: ${HEALTH_RPS} RPS (min: 100)"
+          exit 1
+        fi
+        
+        # API endpoint performance
+        echo "Testing API root endpoint..."
+        ab -n 50 -c 5 -q http://localhost:8000/ > api_perf.txt
+        API_RPS=$(grep "Requests per second:" api_perf.txt | awk '{print $4}' | cut -d'.' -f1)
+        echo "API root RPS: $API_RPS"
+        
+        if [ "$API_RPS" -lt 50 ]; then
+          echo "❌ API performance below threshold: ${API_RPS} RPS (min: 50)"
+          exit 1
+        fi
+        
+        # Memory usage check
+        echo "Checking memory usage..."
+        MEMORY_USAGE=$(docker stats --no-stream --format "{{.MemUsage}}" | head -1 | cut -d'/' -f1 | sed 's/MiB//')
+        echo "Memory usage: ${MEMORY_USAGE}MB"
+        
+        if (( $(echo "$MEMORY_USAGE > 256" | bc -l) )); then
+          echo "❌ Memory usage too high: ${MEMORY_USAGE}MB (max: 256MB)"
+          exit 1
+        else
+          echo "✅ Memory usage acceptable: ${MEMORY_USAGE}MB"
+        fi
+        
+        echo "✅ All performance benchmarks passed"
+    
+    - name: Cleanup
+      working-directory: ${{ env.WORKING_DIR }}
+      if: always()
+      run: docker-compose down
+
+  # Final validation and reporting
+  final-validation:
+    runs-on: ubuntu-latest
+    needs: [pre-build-checks, test, docker-build, container-structure-test, performance-test]
+    if: always()
+    
+    steps:
+    - name: Validation Summary
+      run: |
+        echo "## 🎯 CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Pre-build Security | ${{ needs.pre-build-checks.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Tests | ${{ needs.test.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Docker Build | ${{ needs.docker-build.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Container Structure | ${{ needs.container-structure-test.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Performance | ${{ needs.performance-test.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ needs.pre-build-checks.result }}" == "success" && "${{ needs.test.result }}" == "success" && "${{ needs.docker-build.result }}" == "success" && "${{ needs.container-structure-test.result }}" == "success" ]]; then
+          echo "## ✅ All Checks Passed!" >> $GITHUB_STEP_SUMMARY
+          echo "The Python FastAPI demo is ready for deployment." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## ❌ Some Checks Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Please review the failed jobs and fix the issues." >> $GITHUB_STEP_SUMMARY
+        fi
