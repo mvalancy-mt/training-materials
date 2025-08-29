@@ -120,14 +120,19 @@ jobs:
       - name: 📊 Coverage validation (≥90%)
         working-directory: ${{ env.WORKING_DIR }}
         run: |
-          COVERAGE=$(grep -oP '"lines":\{"pct":\K[0-9.]+' coverage/coverage-summary.json)
-          echo "📊 Test coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE >= 90" | bc -l) )); then
-            echo "✅ Coverage requirement met (≥90%)"
-          else
-            echo "❌ Coverage below requirement: ${COVERAGE}% < 90%"
-            exit 1
-          fi
+          node -e "
+            const data = require('./coverage/coverage-summary.json');
+            const coverage = data.total.lines.pct;
+            const threshold = 90;
+            console.log(\`📊 Test coverage: \${coverage}%\`);
+            if (coverage >= threshold) {
+              console.log('✅ Coverage requirement met (≥90%)');
+              process.exit(0);
+            } else {
+              console.log(\`❌ Coverage below requirement: \${coverage}% < \${threshold}%\`);
+              process.exit(1);
+            }
+          "
 
       - name: 🐳 Docker build test
         working-directory: ${{ env.WORKING_DIR }}
@@ -201,14 +206,19 @@ jobs:
       - name: 📊 Coverage validation (≥95%)
         working-directory: ${{ env.WORKING_DIR }}
         run: |
-          COVERAGE=$(grep -oP '"lines":\{"pct":\K[0-9.]+' coverage/coverage-summary.json)
-          echo "📊 Test coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE >= 95" | bc -l) )); then
-            echo "✅ Coverage requirement met (≥95%)"
-          else
-            echo "❌ Coverage below requirement: ${COVERAGE}% < 95%"
-            exit 1
-          fi
+          node -e "
+            const data = require('./coverage/coverage-summary.json');
+            const coverage = data.total.lines.pct;
+            const threshold = 95;
+            console.log(\`📊 Test coverage: \${coverage}%\`);
+            if (coverage >= threshold) {
+              console.log('✅ Coverage requirement met (≥95%)');
+              process.exit(0);
+            } else {
+              console.log(\`❌ Coverage below requirement: \${coverage}% < \${threshold}%\`);
+              process.exit(1);
+            }
+          "
 
       - name: 🐳 Multi-stage Docker build
         working-directory: ${{ env.WORKING_DIR }}
@@ -299,15 +309,20 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         run: |
           npm run test:coverage
-          COVERAGE=$(grep -oP '"lines":\{"pct":\K[0-9.]+' coverage/coverage-summary.json)
-          echo "📊 Test coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE >= 100" | bc -l) )); then
-            echo "✅ 100% coverage requirement met"
-          else
-            echo "❌ Coverage below 100%: ${COVERAGE}%"
-            echo "🎯 Main branch requires 100% test coverage"
-            exit 1
-          fi
+          node -e "
+            const data = require('./coverage/coverage-summary.json');
+            const coverage = data.total.lines.pct;
+            const threshold = 100;
+            console.log(\`📊 Test coverage: \${coverage}%\`);
+            if (coverage >= threshold) {
+              console.log('✅ 100% coverage requirement met');
+              process.exit(0);
+            } else {
+              console.log(\`❌ Coverage below 100%: \${coverage}%\`);
+              console.log('🎯 Main branch requires 100% test coverage');
+              process.exit(1);
+            }
+          "
 
       - name: 🔒 Zero-vulnerability container scan
         working-directory: ${{ env.WORKING_DIR }}
