@@ -337,8 +337,12 @@ jobs:
         echo "## 📈 Pipeline Metrics" >> $GITHUB_STEP_SUMMARY
         echo "- **Branch**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
         echo "- **Event**: \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Triggered by**: ${{ github.actor }} 👤" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: \`${{ github.sha }}\` by ${{ github.event.head_commit.author.name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit Message**: *${{ github.event.head_commit.message }}*" >> $GITHUB_STEP_SUMMARY
+        echo "- **Files Changed**: ${{ github.event.head_commit.modified }} modified, ${{ github.event.head_commit.added }} added, ${{ github.event.head_commit.removed }} removed" >> $GITHUB_STEP_SUMMARY
         echo "- **Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "- **Workflow Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
         
         # Overall status
         echo "" >> $GITHUB_STEP_SUMMARY
