@@ -1,5 +1,11 @@
 import { Request, Response } from 'express';
-import { TaskModel, CreateTaskSchema, UpdateTaskSchema, TaskStatus, TaskPriority } from '../models/task';
+import {
+  TaskModel,
+  CreateTaskSchema,
+  UpdateTaskSchema,
+  TaskStatus,
+  TaskPriority,
+} from '../models/task';
 import { z } from 'zod';
 
 export class TaskController {
@@ -51,7 +57,7 @@ export class TaskController {
       if (priority && typeof priority === 'string') {
         const priorityResult = TaskPriority.safeParse(priority);
         if (priorityResult.success) {
-          tasks = tasks.filter(task => task.priority === priorityResult.data);
+          tasks = tasks.filter((task) => task.priority === priorityResult.data);
         }
       }
 
