@@ -95,7 +95,7 @@ jobs:
         echo "🔍 Running code quality checks..."
         
         # Basic syntax and import check
-        python -m py_compile -q app/**/*.py
+        find app/ -name "*.py" -exec python -m py_compile {} \;
         echo "✅ Python syntax OK"
         
         # Linting (with relaxed rules to avoid formatter conflicts)
