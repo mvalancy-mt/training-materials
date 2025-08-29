@@ -99,7 +99,7 @@ main           ←─── 🔒 PROTECTED (No direct pushes)
 | Branch | Direct Push | CI Requirements | Deployment |
 |--------|-------------|-----------------|------------|
 | `main` | ❌ **BLOCKED** | 🚨 **Ultra-Strict**: 100% test coverage, zero vulnerabilities, container scan | 🚀 **Production (latest tag)** |
-| `develop` | ❌ **BLOCKED** | ✅ **Comprehensive**: 95% coverage, security scan, quality gates | 🏗️ **All Test Stations (daily)** |
+| `develop` | ❌ **BLOCKED** | ✅ **Comprehensive**: 95% coverage, security scan, quality gates | 🚗 **All Test Vehicles (daily)** |
 | `feature/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | 🧪 **Test Benches (on-demand)** |
 | `hotfix/*` | ✅ Allowed | 🚨 **Ultra-Strict**: Same as main branch (production-ready) | ⚠️ **Emergency Production** |
 | `bugfix/*` | ✅ Allowed | ⚡ **Basic**: 90% coverage, fast feedback | 🧪 **Test Benches (on-demand)** |
@@ -142,9 +142,9 @@ git push -u origin feature/new-feature
 # ⚡ Automatically builds and deploys to available test bench
 # Access via: https://testbench-feature-new-feature.internal.com
 
-# Daily Test Station Reset (happens automatically at 6 AM)
-# All test stations automatically pull latest develop branch
-# Ensures clean, consistent testing environment every day
+# Daily Test Vehicle Reset (happens automatically at 6 AM)
+# All test vehicles/products automatically get latest develop firmware
+# Ensures clean, consistent testing environment on real hardware every day
 ```
 
 ## Getting Started
@@ -219,26 +219,32 @@ kubectl set image deployment/app app=your-registry/app:latest
 
 This workflow supports a comprehensive test infrastructure with **custom GitHub runners** and **automated deployments**:
 
-#### **🏗️ Test Station Daily Reset (Develop Branch)**
+#### **🚗 Test Vehicle Daily Reset (Develop Branch)**
 ```bash
 # Automated daily at 6:00 AM via GitHub Actions scheduled workflow
-name: Daily Test Station Reset
+name: Daily Test Vehicle Reset
 on:
   schedule:
     - cron: '0 6 * * *'  # 6 AM daily
   
 jobs:
-  reset-test-stations:
-    runs-on: [self-hosted, test-station-controller]
+  reset-test-vehicles:
+    runs-on: [self-hosted, test-vehicle-controller]
     steps:
-      - name: 🔄 Deploy develop to all test stations
+      - name: 🔄 Flash develop firmware to all test vehicles
         run: |
-          # Deploy latest develop to all test stations
-          kubectl set image deployment/test-station-* app=registry/app:develop
-          # Verify all stations are healthy
-          kubectl rollout status deployment/test-station-1
-          kubectl rollout status deployment/test-station-2
-          # ... for all test stations
+          # Flash latest develop to all test vehicles/products
+          ./scripts/flash-vehicle.sh vehicle-001 registry/app:develop
+          ./scripts/flash-vehicle.sh vehicle-002 registry/app:develop  
+          ./scripts/flash-vehicle.sh vehicle-003 registry/app:develop
+          
+          # Verify all vehicles are operational
+          ./scripts/health-check.sh vehicle-001
+          ./scripts/health-check.sh vehicle-002
+          ./scripts/health-check.sh vehicle-003
+          
+          # Reset vehicle state to known baseline
+          ./scripts/reset-vehicle-state.sh --all
 ```
 
 #### **🧪 Feature Branch Test Bench Deployment**
@@ -277,11 +283,11 @@ Production (main)     🚀 registry/app:latest
 ├── Staging          ├── Pre-production validation  
 └── Load Testing     └── Performance verification
 
-Test Stations (develop) 🏗️ registry/app:develop  
-├── Station-1        ├── Reset daily @ 6 AM
-├── Station-2        ├── QA validation environment
-├── Station-3        ├── Integration testing
-└── Station-N        └── Automated test suites
+Test Vehicles (develop) 🚗 registry/app:develop  
+├── Vehicle-001      ├── Real product with latest firmware (daily @ 6 AM)
+├── Vehicle-002      ├── Integration testing on actual hardware
+├── Vehicle-003      ├── QA validation with real sensors/actuators
+└── Vehicle-N        └── Performance testing on physical units
 
 Test Benches (features) 🧪 registry/app:feature-name
 ├── Bench-A          ├── feature/user-auth → testbench-user-auth.internal.com
@@ -292,11 +298,11 @@ Test Benches (features) 🧪 registry/app:feature-name
 
 ### **Key Benefits**
 
-- **🔄 Daily Fresh Start**: Test stations reset to develop every morning
-- **🧪 Isolated Testing**: Each feature gets dedicated test bench
-- **⚡ Fast Feedback**: Developers can test features immediately  
-- **🏗️ Staging Pipeline**: Develop branch continuously deployed for QA
-- **🚀 Production Ready**: Main branch always deployable to field
+- **🔄 Daily Fresh Start**: Test vehicles flashed with develop firmware every morning
+- **🧪 Isolated Testing**: Features tested on HIL benches before vehicle deployment
+- **⚡ Fast Feedback**: Developers can test on real hardware daily  
+- **🚗 Real Hardware Validation**: Develop branch tested on actual products
+- **🚀 Field Ready**: Main branch proven on real vehicles before customer deployment
 
 ## Learning Path
 

@@ -142,7 +142,7 @@ Push to develop
        ├── 🔍 Full Security Suite
        ├── 🐳 Container Build (basic)
        ├── ✅ Integration Tests
-       └── 🏗️ Deploy to All Test Stations (daily reset)
+       └── 🚗 Flash to All Test Vehicles (daily @ 6 AM)
 
 PR to main (ULTRA-STRICT)
        │
@@ -317,30 +317,37 @@ kubectl set image deployment/app app=registry/app:latest
 
 The branching strategy integrates seamlessly with a comprehensive test infrastructure:
 
-#### **Daily Test Station Reset (6 AM)**
+#### **Daily Test Vehicle Reset (6 AM)**
 ```yaml
-name: Daily Test Station Reset
+name: Daily Test Vehicle Reset
 on:
   schedule:
     - cron: '0 6 * * *'  # 6 AM daily
     
 jobs:
-  reset-all-test-stations:
-    runs-on: [self-hosted, test-station-controller]
+  reset-all-test-vehicles:
+    runs-on: [self-hosted, test-vehicle-controller]
     steps:
-      - name: 🔄 Deploy develop to all test stations
+      - name: 🚗 Flash develop firmware to all test vehicles
         run: |
-          echo "🏗️ Resetting all test stations to develop branch..."
-          kubectl set image deployment/test-station-1 app=registry/app:develop
-          kubectl set image deployment/test-station-2 app=registry/app:develop
-          kubectl set image deployment/test-station-3 app=registry/app:develop
+          echo "🚗 Flashing all test vehicles with latest develop firmware..."
           
-          # Verify deployments
-          kubectl rollout status deployment/test-station-1 --timeout=300s
-          kubectl rollout status deployment/test-station-2 --timeout=300s
-          kubectl rollout status deployment/test-station-3 --timeout=300s
+          # Flash firmware to each test vehicle/product
+          ./scripts/flash-vehicle.sh vehicle-001 registry/app:develop
+          ./scripts/flash-vehicle.sh vehicle-002 registry/app:develop  
+          ./scripts/flash-vehicle.sh vehicle-003 registry/app:develop
+          ./scripts/flash-vehicle.sh vehicle-004 registry/app:develop
           
-          echo "✅ All test stations reset with fresh develop branch"
+          # Health check each vehicle after flashing
+          ./scripts/health-check.sh vehicle-001 --timeout=60s
+          ./scripts/health-check.sh vehicle-002 --timeout=60s
+          ./scripts/health-check.sh vehicle-003 --timeout=60s
+          ./scripts/health-check.sh vehicle-004 --timeout=60s
+          
+          # Reset to known baseline state
+          ./scripts/reset-vehicle-state.sh --all --baseline
+          
+          echo "✅ All test vehicles flashed and verified with develop firmware"
 ```
 
 #### **Feature Branch Test Bench Deployment**
@@ -386,11 +393,11 @@ Production Tier (main branch)
 └── 📊 Load Testing        → Performance validation
 
 Staging Tier (develop branch)  
-├── 🏗️ Test Station 1      → Daily reset @ 6 AM
-├── 🏗️ Test Station 2      → QA validation environment
-├── 🏗️ Test Station 3      → Integration testing
-├── 🏗️ Test Station 4      → Automated test suites
-└── 🔄 Auto-refresh        → registry/app:develop
+├── 🚗 Test Vehicle 001    → Real product flashed daily @ 6 AM
+├── 🚗 Test Vehicle 002    → QA validation on actual hardware
+├── 🚗 Test Vehicle 003    → Integration testing with real sensors
+├── 🚗 Test Vehicle 004    → Performance testing on physical units
+└── 🔄 Auto-refresh        → registry/app:develop (firmware flash)
 
 Development Tier (feature branches)
 ├── 🧪 Test Bench A        → feature/user-auth
