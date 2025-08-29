@@ -24,9 +24,7 @@ class Settings(BaseSettings):
     database_url: Optional[str] = None
 
     # Security
-    secret_key: str = (
-        "dev-key-change-in-production"  # Default dev key, override in production
-    )
+    secret_key: str = "dev-key-change-in-production"  # Default dev key
 
     # Environment
     environment: str = "development"

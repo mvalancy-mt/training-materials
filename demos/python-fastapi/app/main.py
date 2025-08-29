@@ -18,7 +18,7 @@ settings = get_settings()
 # Create FastAPI app
 app = FastAPI(
     title="Task Management API",
-    description="A simple task management API demonstrating Docker + CI/CD best practices",
+    description="A simple task management API for Docker + CI/CD demo",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",

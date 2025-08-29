@@ -40,7 +40,9 @@ async def readiness_check():
 
     return JSONResponse(
         status_code=(
-            status.HTTP_200_OK if all_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
+            status.HTTP_200_OK
+            if all_healthy
+            else status.HTTP_503_SERVICE_UNAVAILABLE
         ),
         content={
             "status": "ready" if all_healthy else "not_ready",

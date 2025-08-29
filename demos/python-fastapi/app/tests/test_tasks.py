@@ -2,7 +2,6 @@
 Test task API endpoints.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 
@@ -68,7 +67,9 @@ def test_update_task(client: TestClient, sample_task):
     data = response.json()
     assert data["title"] == update_data["title"]
     assert data["status"] == update_data["status"]
-    assert data["description"] == sample_task["description"]  # Should remain unchanged
+    assert (
+        data["description"] == sample_task["description"]
+    )  # Should remain unchanged
 
 
 def test_update_nonexistent_task(client: TestClient):

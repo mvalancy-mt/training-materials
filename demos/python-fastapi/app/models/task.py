@@ -30,12 +30,16 @@ class TaskPriority(str, Enum):
 class TaskBase(BaseModel):
     """Base task model."""
 
-    title: str = Field(..., min_length=1, max_length=200, description="Task title")
+    title: str = Field(
+        ..., min_length=1, max_length=200, description="Task title"
+    )
     description: Optional[str] = Field(
         None, max_length=1000, description="Task description"
     )
     status: TaskStatus = Field(TaskStatus.PENDING, description="Task status")
-    priority: TaskPriority = Field(TaskPriority.MEDIUM, description="Task priority")
+    priority: TaskPriority = Field(
+        TaskPriority.MEDIUM, description="Task priority"
+    )
     due_date: Optional[datetime] = Field(None, description="Task due date")
 
 
@@ -60,7 +64,9 @@ class Task(TaskBase):
 
     id: int = Field(..., description="Task ID")
     created_at: datetime = Field(..., description="Creation timestamp")
-    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+    updated_at: Optional[datetime] = Field(
+        None, description="Last update timestamp"
+    )
 
     class Config:
         json_encoders = {datetime: lambda dt: dt.isoformat()}

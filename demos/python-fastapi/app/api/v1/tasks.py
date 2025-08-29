@@ -8,7 +8,13 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 
-from app.models.task import Task, TaskCreate, TaskPriority, TaskStatus, TaskUpdate
+from app.models.task import (
+    Task,
+    TaskCreate,
+    TaskPriority,
+    TaskStatus,
+    TaskUpdate,
+)
 
 router = APIRouter()
 
@@ -21,8 +27,12 @@ next_id = 1
 @router.get("/", response_model=List[Task])
 async def get_tasks(
     status: Optional[TaskStatus] = Query(None, description="Filter by status"),
-    priority: Optional[TaskPriority] = Query(None, description="Filter by priority"),
-    limit: int = Query(10, ge=1, le=100, description="Number of tasks to return"),
+    priority: Optional[TaskPriority] = Query(
+        None, description="Filter by priority"
+    ),
+    limit: int = Query(
+        10, ge=1, le=100, description="Number of tasks to return"
+    ),
     offset: int = Query(0, ge=0, description="Number of tasks to skip"),
 ):
     """Get all tasks with optional filtering."""
@@ -30,14 +40,16 @@ async def get_tasks(
 
     # Apply filters
     if status:
-        filtered_tasks = [task for task in filtered_tasks if task["status"] == status]
+        filtered_tasks = [
+            task for task in filtered_tasks if task["status"] == status
+        ]
     if priority:
         filtered_tasks = [
             task for task in filtered_tasks if task["priority"] == priority
         ]
 
     # Apply pagination
-    paginated_tasks = filtered_tasks[offset : offset + limit]
+    paginated_tasks = filtered_tasks[offset:offset + limit]
 
     return paginated_tasks
 
@@ -47,7 +59,9 @@ async def get_task(task_id: int):
     """Get a specific task by ID."""
     task = next((task for task in tasks_db if task["id"] == task_id), None)
     if not task:
-        raise HTTPException(status_code=404, detail=f"Task with ID {task_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Task with ID {task_id} not found"
+        )
     return task
 
 
@@ -79,7 +93,9 @@ async def update_task(task_id: int, task_update: TaskUpdate):
     """Update an existing task."""
     task = next((task for task in tasks_db if task["id"] == task_id), None)
     if not task:
-        raise HTTPException(status_code=404, detail=f"Task with ID {task_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Task with ID {task_id} not found"
+        )
 
     # Update only provided fields
     update_data = task_update.dict(exclude_unset=True)
@@ -98,12 +114,15 @@ async def delete_task(task_id: int):
 
     task = next((task for task in tasks_db if task["id"] == task_id), None)
     if not task:
-        raise HTTPException(status_code=404, detail=f"Task with ID {task_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Task with ID {task_id} not found"
+        )
 
     tasks_db = [task for task in tasks_db if task["id"] != task_id]
 
     return JSONResponse(
-        status_code=200, content={"message": f"Task {task_id} deleted successfully"}
+        status_code=200,
+        content={"message": f"Task {task_id} deleted successfully"},
     )
 
 
@@ -124,7 +143,9 @@ async def get_task_summary():
     # Count by priority
     by_priority = {}
     for priority in TaskPriority:
-        count = len([task for task in tasks_db if task["priority"] == priority])
+        count = len(
+            [task for task in tasks_db if task["priority"] == priority]
+        )
         by_priority[priority.value] = count
 
     return {"total": total, "by_status": by_status, "by_priority": by_priority}

@@ -31,7 +31,7 @@ dev = [
 ]
 
 [tool.black]
-line-length = 88
+line-length = 79
 target-version = ['py311']
 include = '\.pyi?$'
 extend-exclude = '''
@@ -55,7 +55,7 @@ line_length = 88
 known_first_party = ["app"]
 
 [tool.flake8]
-max-line-length = 88
+max-line-length = 79
 extend-ignore = ["E203", "W503"]
 exclude = [".git", "__pycache__", "build", "dist", ".venv"]
 
