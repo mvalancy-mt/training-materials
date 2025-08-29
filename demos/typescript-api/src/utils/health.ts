@@ -23,7 +23,7 @@ export class HealthChecker {
     this.version = version;
   }
 
-  async checkHealth(): Promise<HealthCheckResult> {
+  checkHealth(): Promise<HealthCheckResult> {
     const uptime = (Date.now() - this.startTime) / 1000;
     const memoryUsage = process.memoryUsage();
 
@@ -41,14 +41,14 @@ export class HealthChecker {
       status = 'degraded';
     }
 
-    return {
+    return Promise.resolve({
       status,
       timestamp: new Date().toISOString(),
       uptime,
       version: this.version,
-      environment: process.env['NODE_ENV'] || 'development',
+      environment: process.env['NODE_ENV'] ?? 'development',
       memory: memoryInfo,
-    };
+    });
   }
 
   healthEndpoint = async (_req: Request, res: Response): Promise<void> => {
@@ -73,20 +73,13 @@ export class HealthChecker {
     }
   };
 
-  readinessEndpoint = async (_req: Request, res: Response): Promise<void> => {
-    try {
-      res.status(200).json({
-        success: true,
-        data: {
-          status: 'ready',
-          timestamp: new Date().toISOString(),
-        },
-      });
-    } catch (error) {
-      res.status(503).json({
-        success: false,
-        error: 'Service not ready',
-      });
-    }
+  readinessEndpoint = (_req: Request, res: Response): void => {
+    res.status(200).json({
+      success: true,
+      data: {
+        status: 'ready',
+        timestamp: new Date().toISOString(),
+      },
+    });
   };
 }

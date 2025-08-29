@@ -15,6 +15,7 @@ export const errorHandler = (
   const message = error.message || 'Internal Server Error';
 
   if (process.env['NODE_ENV'] === 'development') {
+    // eslint-disable-next-line no-console
     console.error('Error:', {
       message: error.message,
       stack: error.stack,

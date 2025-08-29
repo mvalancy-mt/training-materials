@@ -20,7 +20,7 @@ export const securityMiddleware = [
     },
   }),
   cors({
-    origin: process.env['CORS_ORIGIN']?.split(',') || ['http://localhost:3000'],
+    origin: process.env['CORS_ORIGIN']?.split(',') ?? ['http://localhost:3000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -36,6 +36,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
     const logLevel = res.statusCode >= 400 ? 'error' : 'info';
 
     if (process.env['NODE_ENV'] !== 'test') {
+      // eslint-disable-next-line no-console
       console.log(`${logLevel.toUpperCase()}: ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
     }
   });
@@ -43,11 +44,11 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
   next();
 };
 
-export const rateLimiter = (windowMs: number, maxRequests: number) => {
+export const rateLimiter = (windowMs: number, maxRequests: number): ((req: Request, res: Response, next: NextFunction) => void) => {
   const clients = new Map<string, { count: number; resetTime: number }>();
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    const clientId = req.ip || 'unknown';
+    const clientId = req.ip ?? 'unknown';
     const now = Date.now();
     const client = clients.get(clientId);
 
