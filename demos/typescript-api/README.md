@@ -32,10 +32,10 @@ graph TB
         M --> P[Ultra-Strict CI - 96%+]
     end
 
-    style A fill:#e1f5fe
-    style E fill:#fff3e0
-    style I fill:#f3e5f5
-    style M fill:#e8f5e9
+    style A fill:#2196f3,color:#ffffff
+    style E fill:#ff9800,color:#ffffff
+    style I fill:#9c27b0,color:#ffffff
+    style M fill:#4caf50,color:#ffffff
 ```
 
 ## 🏗️ Architecture
@@ -57,10 +57,10 @@ flowchart TB
         H --> J[Distroless Runtime]
     end
 
-    style A fill:#bbdefb
-    style B fill:#c8e6c9
-    style F fill:#fff9c4
-    style H fill:#f8bbd9
+    style A fill:#1976d2,color:#ffffff
+    style B fill:#2e7d32,color:#ffffff
+    style F fill:#f9a825,color:#ffffff
+    style H fill:#ad1457,color:#ffffff
 ```
 
 ### Core Components
@@ -97,8 +97,8 @@ graph LR
         J --> K
     end
 
-    style A fill:#e3f2fd
-    style K fill:#e8f5e9
+    style A fill:#1976d2,color:#ffffff
+    style K fill:#2e7d32,color:#ffffff
 ```
 
 | Method | Endpoint | Description |
@@ -121,11 +121,11 @@ flowchart LR
     C --> D[4. Testing]
     D --> E[5. Docker Deploy]
 
-    style A fill:#fff3e0
-    style B fill:#f3e5f5
-    style C fill:#e8f5e9
-    style D fill:#e1f5fe
-    style E fill:#fce4ec
+    style A fill:#f57c00,color:#ffffff
+    style B fill:#9c27b0,color:#ffffff
+    style C fill:#2e7d32,color:#ffffff
+    style D fill:#1976d2,color:#ffffff
+    style E fill:#ad1457,color:#ffffff
 ```
 
 ### Prerequisites
