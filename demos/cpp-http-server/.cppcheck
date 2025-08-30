@@ -1,4 +1,5 @@
 # Cppcheck suppressions for C++ HTTP Server Demo
+# Format: [error id]:[filename]:[line]
 # These are informational warnings that don't affect code quality
 
 # Suppress missing include warnings - these are informational only
@@ -8,5 +9,5 @@ missingIncludeSystem
 # Suppress checkers report - not a code issue
 checkersReport
 
-# Suppress branch analysis limit warnings - informational only
-normalCheckLevelMaxBranches
+# Suppress unmatched suppression warnings
+unmatchedSuppression
