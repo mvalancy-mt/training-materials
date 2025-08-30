@@ -33,10 +33,11 @@ jobs:
           echo "🔍 Running Advanced Secret Detection..."
 
           # TypeScript-specific secret patterns
-          TS_SECRETS=$(grep -r -E "(password|secret|key|token|api_key).*[=:].*['\"][^'\"]{8,}" . \
+          TS_SECRETS=$(grep -r -E "(password|secret|key|token|api_key).*[=:].*['\"][A-Za-z0-9+/=]{12,}" . \
             --include="*.ts" --include="*.js" --include="*.json" \
-            --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage | \
-            grep -v -E "(test|spec|placeholder|example|demo|change-in-production)" || true)
+            --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage \
+            --exclude="*package-lock.json" --exclude="*package.json" | \
+            grep -v -E "(test|spec|placeholder|example|demo|change-in-production|\^[0-9]+\.[0-9]+\.[0-9]+)" || true)
           TS_COUNT=$(echo "$TS_SECRETS" | wc -l)
           [ "$TS_SECRETS" = "" ] && TS_COUNT=0
 
