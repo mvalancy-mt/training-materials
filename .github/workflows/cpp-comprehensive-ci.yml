@@ -16,7 +16,7 @@ env:
   WORKING_DIR: demos/cpp-http-server
 
 jobs:
-  # Security & Quality Analysis - runs on all branches  
+  # Security & Quality Analysis - runs on all branches
   security-and-quality:
     name: 🔒 Security & Quality Analysis (C++)
     runs-on: ubuntu-latest
@@ -43,15 +43,15 @@ jobs:
       coverage_percent: ${{ steps.test-results.outputs.coverage_percent }}
       lines_covered: ${{ steps.test-results.outputs.lines_covered }}
       lines_total: ${{ steps.test-results.outputs.lines_total }}
-    
+
     steps:
     - name: ⏱️ Start timing
       id: start-time
       run: echo "start-time=$(date +%s)" >> $GITHUB_OUTPUT
-      
+
     - name: 🔄 Checkout code
       uses: actions/checkout@v4
-    
+
     - name: 🔧 Install dependencies
       run: |
         sudo apt-get update
@@ -66,7 +66,7 @@ jobs:
           clang-tools \
           lcov \
           curl
-        
+
         # Install specific compiler versions
         if [ "${{ matrix.compiler }}" = "gcc-12" ]; then
           sudo apt-get install -y gcc-12 g++-12
@@ -77,46 +77,46 @@ jobs:
           echo "CC=clang-15" >> $GITHUB_ENV
           echo "CXX=clang++-15" >> $GITHUB_ENV
         fi
-    
+
     - name: 🔍 Advanced Secret Detection
       id: secrets
       working-directory: ${{ env.WORKING_DIR }}
       run: |
         echo "🔍 Scanning for secrets, API keys, tokens, and passwords..."
-        
+
         # Count total files and lines scanned
         FILES_SCANNED=$(find . -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | wc -l)
         LINES_SCANNED=$(find . -name "*.cpp" -o -name "*.h" -o -name "*.hpp" -exec wc -l {} + | tail -1 | awk '{print $1}' || echo "0")
-        
+
         # Pattern 1: Basic hardcoded secrets
         BASIC_SECRETS=$(grep -r -E "(password|secret|key|token|api_key).*=.*['\"][^'\"]{8,}" . --include="*.cpp" --include="*.h" | \
           grep -v -E "(test|placeholder|example|demo|change-in-production)" || true)
         BASIC_COUNT=$(echo "$BASIC_SECRETS" | wc -l)
         [ "$BASIC_SECRETS" = "" ] && BASIC_COUNT=0
-        
+
         # Pattern 2: API Keys
         API_KEYS=$(grep -r -E "(sk-|pk-|ak-|ey-)[a-zA-Z0-9]{20,}" . --include="*.cpp" --include="*.h" || true)
         API_COUNT=$(echo "$API_KEYS" | wc -l)
         [ "$API_KEYS" = "" ] && API_COUNT=0
-        
+
         # Pattern 3: JWT tokens
         JWT_TOKENS=$(grep -r -E "ey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9._-]{10,}" . --include="*.cpp" --include="*.h" || true)
         JWT_COUNT=$(echo "$JWT_TOKENS" | wc -l)
         [ "$JWT_TOKENS" = "" ] && JWT_COUNT=0
-        
+
         # Pattern 4: Password-like strings
         PASSWORD_LIKE=$(grep -r -E "(password|secret|key|token).*=.*['\"][^'\"]*[!@#$%^&*()_+=\-\[\]|\\:;\"'<>?,./][^'\"]*[0-9]" . --include="*.cpp" --include="*.h" | \
           grep -v -E "(test|placeholder|example|demo)" || true)
         PASSWORD_COUNT=$(echo "$PASSWORD_LIKE" | wc -l)
         [ "$PASSWORD_LIKE" = "" ] && PASSWORD_COUNT=0
-        
+
         # Pattern 5: AWS/Cloud credentials
         CLOUD_KEYS=$(grep -r -E "(AKIA|ASIA)[A-Z0-9]{16}|[A-Za-z0-9/+=]{40}.*aws" . --include="*.cpp" --include="*.h" || true)
         CLOUD_COUNT=$(echo "$CLOUD_KEYS" | wc -l)
         [ "$CLOUD_KEYS" = "" ] && CLOUD_COUNT=0
-        
+
         TOTAL_FOUND=$((BASIC_COUNT + API_COUNT + JWT_COUNT + PASSWORD_COUNT + CLOUD_COUNT))
-        
+
         # Output statistics
         echo "files_scanned=$FILES_SCANNED" >> $GITHUB_OUTPUT
         echo "lines_scanned=$LINES_SCANNED" >> $GITHUB_OUTPUT
@@ -126,7 +126,7 @@ jobs:
         echo "passwords=$PASSWORD_COUNT" >> $GITHUB_OUTPUT
         echo "cloud_keys=$CLOUD_COUNT" >> $GITHUB_OUTPUT
         echo "total_secrets=$TOTAL_FOUND" >> $GITHUB_OUTPUT
-        
+
         # Display scan results
         echo "📊 Secret Scan Results:"
         echo "  📁 Files scanned: $FILES_SCANNED"
@@ -137,35 +137,37 @@ jobs:
         echo "  🔒 Password-like: $PASSWORD_COUNT"
         echo "  ☁️ Cloud keys: $CLOUD_COUNT"
         echo "  📈 Total found: $TOTAL_FOUND"
-        
+
         if [ $TOTAL_FOUND -gt 0 ]; then
           echo "❌ Potential secrets detected!"
           exit 1
         else
           echo "✅ No hardcoded secrets detected"
         fi
-    
+
     - name: 🛡️ Static Code Analysis
       id: static-analysis
       working-directory: ${{ env.WORKING_DIR }}
       run: |
         echo "🛡️ Running C++ static analysis..."
-        
+
         # Count files being analyzed
         CPP_FILES=$(find . -name "*.cpp" -o -name "*.h" | wc -l)
-        
-        # Run cppcheck
+
+        # Run cppcheck with suppressions for informational warnings
         echo "🔍 Running cppcheck..."
         cppcheck --enable=all --error-exitcode=0 --xml --output-file=cppcheck-report.xml \
+          --suppress=missingInclude --suppress=missingIncludeSystem \
+          --suppress=checkersReport --suppress=unmatchedSuppression \
           --include=include/ src/ tests/ 2>/dev/null || true
-        
+
         # Count cppcheck issues
         if [ -f "cppcheck-report.xml" ]; then
           CPPCHECK_ERRORS=$(grep -c "<error " cppcheck-report.xml || echo "0")
         else
           CPPCHECK_ERRORS=0
         fi
-        
+
         # Run clang-tidy if available
         echo "🔍 Running clang-tidy..."
         CLANG_ISSUES=0
@@ -173,54 +175,54 @@ jobs:
           find src/ -name "*.cpp" -exec clang-tidy {} -- -I./include > clang-tidy-report.txt 2>/dev/null || true
           CLANG_ISSUES=$(grep -c "warning:" clang-tidy-report.txt || echo "0")
         fi
-        
+
         TOTAL_ISSUES=$((CPPCHECK_ERRORS + CLANG_ISSUES))
-        
+
         # Output statistics
         echo "files_analyzed=$CPP_FILES" >> $GITHUB_OUTPUT
         echo "cppcheck_issues=$CPPCHECK_ERRORS" >> $GITHUB_OUTPUT
         echo "clang_issues=$CLANG_ISSUES" >> $GITHUB_OUTPUT
         echo "total_issues=$TOTAL_ISSUES" >> $GITHUB_OUTPUT
-        
+
         # Display results
         echo "📊 Static Analysis Results:"
         echo "   📁 C++ files analyzed: $CPP_FILES"
         echo "   🔍 Cppcheck issues: $CPPCHECK_ERRORS"
         echo "   🔧 Clang-tidy warnings: $CLANG_ISSUES"
         echo "   📈 Total issues: $TOTAL_ISSUES"
-        
+
         # Fail on critical issues
         if [ $CPPCHECK_ERRORS -gt 10 ]; then
           echo "❌ Too many cppcheck issues: $CPPCHECK_ERRORS"
           exit 1
         fi
-        
+
         echo "✅ Static analysis passed"
-    
+
     - name: 🧪 Build and Unit Tests
       id: test-results
       working-directory: ${{ env.WORKING_DIR }}
       run: |
         echo "🧪 Building and running C++ tests..."
-        
+
         # Create build directory
         mkdir -p build
         cd build
-        
+
         # Configure with coverage and debug info
         cmake -DCMAKE_BUILD_TYPE=Debug \
               -DENABLE_COVERAGE=ON \
               -DCMAKE_CXX_FLAGS="--coverage -g -O0" \
               ..
-        
+
         # Build project
         make -j$(nproc)
-        
+
         # Run tests if test executable exists
         TESTS_TOTAL=0
         TESTS_PASSED=0
         TESTS_FAILED=0
-        
+
         if [ -f "./test_runner" ]; then
           echo "🏃 Running unit tests..."
           if ./test_runner; then
@@ -241,12 +243,12 @@ jobs:
           TESTS_PASSED=1
           TESTS_FAILED=0
         fi
-        
+
         # Generate coverage if possible
         COVERAGE_PERCENT=0
         LINES_COVERED=0
         LINES_TOTAL=0
-        
+
         if command -v lcov >/dev/null 2>&1 && [ -f "./test_runner" ]; then
           echo "📊 Generating coverage report..."
           lcov --capture --directory . --output-file coverage.info 2>/dev/null || true
@@ -256,12 +258,12 @@ jobs:
             LINES_COVERED=$(echo "$COVERAGE_PERCENT * $LINES_TOTAL / 100" | bc -l | cut -d. -f1 2>/dev/null || echo "0")
           fi
         fi
-        
+
         # Ensure numeric values
         COVERAGE_PERCENT=${COVERAGE_PERCENT:-0}
         LINES_TOTAL=${LINES_TOTAL:-0}
         LINES_COVERED=${LINES_COVERED:-0}
-        
+
         # Output statistics
         echo "tests_total=$TESTS_TOTAL" >> $GITHUB_OUTPUT
         echo "tests_passed=$TESTS_PASSED" >> $GITHUB_OUTPUT
@@ -269,7 +271,7 @@ jobs:
         echo "coverage_percent=$COVERAGE_PERCENT" >> $GITHUB_OUTPUT
         echo "lines_covered=$LINES_COVERED" >> $GITHUB_OUTPUT
         echo "lines_total=$LINES_TOTAL" >> $GITHUB_OUTPUT
-        
+
         # Display results
         echo "📊 Test Results:"
         echo "   🧪 Total tests: $TESTS_TOTAL"
@@ -277,15 +279,15 @@ jobs:
         echo "   ❌ Failed: $TESTS_FAILED"
         echo "   📈 Coverage: ${COVERAGE_PERCENT}%"
         echo "   📄 Lines covered: $LINES_COVERED/$LINES_TOTAL"
-        
+
         # Fail on test failures
         if [ $TESTS_FAILED -gt 0 ]; then
           echo "❌ Test failures detected!"
           exit 1
         fi
-        
+
         echo "✅ All tests passed"
-    
+
     - name: ⏱️ Calculate duration
       id: timing
       run: |
@@ -300,15 +302,15 @@ jobs:
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     outputs:
       strict-duration: ${{ steps.timing.outputs.duration }}
-    
+
     steps:
     - name: ⏱️ Start timing
       id: start-time
       run: echo "start-time=$(date +%s)" >> $GITHUB_OUTPUT
-      
+
     - name: 🔄 Checkout code
       uses: actions/checkout@v4
-    
+
     - name: 🔧 Install dependencies
       run: |
         sudo apt-get update
@@ -317,37 +319,37 @@ jobs:
           libmicrohttpd-dev libjsoncpp-dev libssl-dev \
           cppcheck clang-tools valgrind lcov \
           clang-format iwyu
-    
+
     - name: 🚨 Ultra-Strict Analysis
       working-directory: ${{ env.WORKING_DIR }}
       run: |
         echo "🚨 Running ultra-strict C++ analysis for main branch..."
-        
+
         # Memory leak detection with Valgrind (if tests exist)
         mkdir -p build && cd build
         cmake -DCMAKE_BUILD_TYPE=Debug ..
         make -j$(nproc)
-        
+
         if [ -f "./test_runner" ]; then
           echo "🧠 Running Valgrind memory analysis..."
           valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all \
             --track-origins=yes --error-exitcode=1 ./test_runner
         fi
-        
+
         # Code formatting validation
         echo "🎨 Checking code formatting..."
         cd ..
         find src include tests -name "*.cpp" -o -name "*.h" | \
           xargs clang-format --dry-run --Werror
-        
+
         # Include-what-you-use (if available)
         if command -v iwyu >/dev/null 2>&1; then
           echo "📦 Checking include dependencies..."
           find src -name "*.cpp" -exec iwyu {} -- -I./include \; || true
         fi
-        
+
         echo "✅ Ultra-strict checks passed"
-    
+
     - name: ⏱️ Calculate duration
       id: timing
       run: |
@@ -372,74 +374,74 @@ jobs:
       exposed_ports: ${{ steps.build.outputs.exposed_ports }}
       workdir: ${{ steps.build.outputs.workdir }}
       user: ${{ steps.build.outputs.user }}
-    
+
     steps:
     - name: ⏱️ Start timing
       id: start-time
       run: echo "start-time=$(date +%s)" >> $GITHUB_OUTPUT
-      
+
     - name: 🔄 Checkout code
       uses: actions/checkout@v4
-    
+
     - name: 🐳 Build C++ Docker image
       id: build
       working-directory: ${{ env.WORKING_DIR }}
       run: |
         echo "🐳 Building C++ HTTP server Docker image..."
         docker build -t cpp-http-server:latest .
-        
+
         # Get image details
         IMAGE_SIZE=$(docker images cpp-http-server:latest --format "table {{.Size}}" | tail -n 1)
         EXPOSED_PORTS=$(docker inspect cpp-http-server:latest | jq -r '.[0].Config.ExposedPorts | keys[]?' | tr '\n' ' ' || echo "8000/tcp")
         WORKDIR=$(docker inspect cpp-http-server:latest | jq -r '.[0].Config.WorkingDir' || echo "/app")
         USER=$(docker inspect cpp-http-server:latest | jq -r '.[0].Config.User' || echo "appuser")
-        
+
         echo "size=$IMAGE_SIZE" >> $GITHUB_OUTPUT
         echo "exposed_ports=$EXPOSED_PORTS" >> $GITHUB_OUTPUT
         echo "workdir=$WORKDIR" >> $GITHUB_OUTPUT
         echo "user=$USER" >> $GITHUB_OUTPUT
-        
+
         echo "📊 C++ Container Analysis:"
         echo "   📦 Image size: $IMAGE_SIZE"
         echo "   🔗 Exposed ports: $EXPOSED_PORTS"
         echo "   📂 Working directory: $WORKDIR"
         echo "   👤 User: $USER"
-        
+
         echo "✅ C++ Docker image built successfully"
-    
+
     - name: 🔒 Container Security Scan
       id: container-scan
       working-directory: ${{ env.WORKING_DIR }}
       run: |
         echo "🔒 Scanning C++ container for vulnerabilities..."
-        
+
         # Run Trivy scan with JSON output
         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
           -v $PWD:/tmp/.cache/ \
           aquasec/trivy:latest image --format json --output trivy-report.json cpp-http-server:latest || true
-          
+
         # Parse vulnerability statistics
         CRITICAL_VULNS=0
         HIGH_VULNS=0
         MEDIUM_VULNS=0
         LOW_VULNS=0
-        
+
         if [ -f "trivy-report.json" ]; then
           CRITICAL_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-report.json 2>/dev/null || echo "0")
           HIGH_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-report.json 2>/dev/null || echo "0")
           MEDIUM_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "MEDIUM")] | length' trivy-report.json 2>/dev/null || echo "0")
           LOW_VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "LOW")] | length' trivy-report.json 2>/dev/null || echo "0")
         fi
-        
+
         TOTAL_VULNS=$((CRITICAL_VULNS + HIGH_VULNS + MEDIUM_VULNS + LOW_VULNS))
-        
+
         # Output statistics
         echo "critical_vulns=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
         echo "high_vulns=$HIGH_VULNS" >> $GITHUB_OUTPUT
         echo "medium_vulns=$MEDIUM_VULNS" >> $GITHUB_OUTPUT
         echo "low_vulns=$LOW_VULNS" >> $GITHUB_OUTPUT
         echo "total_vulns=$TOTAL_VULNS" >> $GITHUB_OUTPUT
-        
+
         # Display results
         echo "📊 C++ Container Security Scan:"
         echo "   🔥 Critical: $CRITICAL_VULNS"
@@ -447,7 +449,7 @@ jobs:
         echo "   🟡 Medium: $MEDIUM_VULNS"
         echo "   🟢 Low: $LOW_VULNS"
         echo "   📈 Total vulnerabilities: $TOTAL_VULNS"
-        
+
         # Determine scan result
         if [ $CRITICAL_VULNS -gt 0 ]; then
           echo "❌ Critical vulnerabilities found in C++ container!"
@@ -458,16 +460,16 @@ jobs:
         else
           echo "✅ C++ container security scan passed"
         fi
-    
+
     - name: 🧪 C++ Container Health Tests
       working-directory: ${{ env.WORKING_DIR }}
       run: |
         echo "🧪 Testing C++ container health..."
-        
+
         # Start container
         docker run --rm -d -p 8001:8000 --name cpp-test-container cpp-http-server:latest
         sleep 15
-        
+
         # Basic connectivity test
         if curl -f http://localhost:8001/health; then
           echo "✅ C++ health endpoint working"
@@ -477,7 +479,7 @@ jobs:
           docker stop cpp-test-container
           exit 1
         fi
-        
+
         # API functionality test
         if curl -f -X POST http://localhost:8001/api/v1/tasks \
           -H "Content-Type: application/json" \
@@ -489,11 +491,11 @@ jobs:
           docker stop cpp-test-container
           exit 1
         fi
-        
+
         # Cleanup
         docker stop cpp-test-container
         echo "✅ C++ container tests passed"
-    
+
     - name: ⏱️ Calculate duration
       id: timing
       run: |
@@ -507,7 +509,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [security-and-quality, strict-pr-checks, container-pipeline]
     if: always()
-    
+
     steps:
     - name: 📊 Generate C++ Results Summary
       run: |
@@ -515,18 +517,18 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "| Stage | Status | Duration | Score | Details |" >> $GITHUB_STEP_SUMMARY
         echo "|-------|--------|----------|-------|---------|" >> $GITHUB_STEP_SUMMARY
-        
+
         # C++ Security & Quality Analysis
         if [ "${{ needs.security-and-quality.result }}" == "success" ]; then
           SECRET_DETAILS="🔍 Secrets: ${{ needs.security-and-quality.outputs.total_secrets }}/5 patterns in ${{ needs.security-and-quality.outputs.files_scanned }} files"
           ANALYSIS_DETAILS="🛡️ Static: ${{ needs.security-and-quality.outputs.total_issues }} issues"
           TEST_DETAILS="🧪 Tests: ${{ needs.security-and-quality.outputs.tests_passed }}/${{ needs.security-and-quality.outputs.tests_total }} passed, ${{ needs.security-and-quality.outputs.coverage_percent }}% coverage"
-          
+
           echo "| 🔒 C++ Security & Quality | ✅ **PASSED** | ${{ needs.security-and-quality.outputs.duration }} | 🟢 95/100 | ${SECRET_DETAILS}, ${ANALYSIS_DETAILS}, ${TEST_DETAILS} |" >> $GITHUB_STEP_SUMMARY
         else
           echo "| 🔒 C++ Security & Quality | ❌ **FAILED** | ${{ needs.security-and-quality.outputs.duration }} | 🔴 0/100 | C++ security issues or quality problems detected |" >> $GITHUB_STEP_SUMMARY
         fi
-        
+
         # Strict PR Checks (only for PRs to main)
         if [ "${{ github.event_name }}" == "pull_request" ] && [ "${{ github.base_ref }}" == "main" ]; then
           if [ "${{ needs.strict-pr-checks.result }}" == "success" ]; then
@@ -537,12 +539,12 @@ jobs:
         else
           echo "| 🚨 C++ Strict PR Review | ⏭️ **SKIPPED** | - | - | Not a PR to main |" >> $GITHUB_STEP_SUMMARY
         fi
-        
+
         # C++ Container Pipeline (only on main)
         if [ "${{ github.ref }}" == "refs/heads/main" ]; then
           if [ "${{ needs.container-pipeline.result }}" == "success" ]; then
             CONTAINER_DETAILS="📦 Size: ${{ needs.container-pipeline.outputs.image-size }}, 🔒 Vulnerabilities: ${{ needs.container-pipeline.outputs.total_vulns }} (🔥${{ needs.container-pipeline.outputs.critical_vulns }} 🔴${{ needs.container-pipeline.outputs.high_vulns }} 🟡${{ needs.container-pipeline.outputs.medium_vulns }} 🟢${{ needs.container-pipeline.outputs.low_vulns }})"
-            
+
             echo "| 🐳 C++ Container Pipeline | ✅ **PASSED** | ${{ needs.container-pipeline.outputs.container-duration }} | 🟢 90/100 | ${CONTAINER_DETAILS} |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| 🐳 C++ Container Pipeline | ❌ **FAILED** | ${{ needs.container-pipeline.outputs.container-duration }} | 🔴 0/100 | C++ container build or critical security vulnerabilities |" >> $GITHUB_STEP_SUMMARY
@@ -550,7 +552,7 @@ jobs:
         else
           echo "| 🐳 C++ Container Pipeline | ⏭️ **SKIPPED** | - | - | Main branch only |" >> $GITHUB_STEP_SUMMARY
         fi
-        
+
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## 📈 C++ Pipeline Metrics" >> $GITHUB_STEP_SUMMARY
         echo "- **Language**: C++20 with modern practices" >> $GITHUB_STEP_SUMMARY
@@ -559,13 +561,13 @@ jobs:
         echo "- **Branch**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
         echo "- **Triggered by**: ${{ github.actor }} 👤" >> $GITHUB_STEP_SUMMARY
         echo "- **Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-        
+
         # Overall status
         echo "" >> $GITHUB_STEP_SUMMARY
         if [ "${{ needs.security-and-quality.result }}" == "success" ]; then
           echo "## 🎉 **C++ BUILD READY!**" >> $GITHUB_STEP_SUMMARY
           echo "C++ HTTP server passed all quality gates and is ready for deployment." >> $GITHUB_STEP_SUMMARY
         else
-          echo "## ❌ **C++ BUILD BLOCKED**" >> $GITHUB_STEP_SUMMARY  
+          echo "## ❌ **C++ BUILD BLOCKED**" >> $GITHUB_STEP_SUMMARY
           echo "C++ issues detected. Please fix before proceeding." >> $GITHUB_STEP_SUMMARY
         fi
