@@ -156,10 +156,11 @@ jobs:
 
         # Run cppcheck with suppressions for informational warnings
         echo "🔍 Running cppcheck..."
-        cppcheck --enable=all --error-exitcode=0 --xml --output-file=cppcheck-report.xml \
+        cppcheck --enable=all --error-exitcode=0 \
           --suppress=missingInclude --suppress=missingIncludeSystem \
           --suppress=checkersReport --suppress=unmatchedSuppression \
-          --include=include/ src/ tests/ 2>/dev/null || true
+          --xml --xml-version=2 \
+          --include=include/ src/ tests/ 2>cppcheck-report.xml || true
 
         # Count cppcheck issues
         if [ -f "cppcheck-report.xml" ]; then
