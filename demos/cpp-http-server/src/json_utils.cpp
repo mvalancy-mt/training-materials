@@ -2,10 +2,13 @@
 #include <iostream>
 #include <sstream>
 #include <chrono>
+#include <algorithm>
 
 namespace http_server {
 namespace json_utils {
 
+// Reserved for future HTTP server implementation
+/*
 Json::Value parseJson(const std::string& json_str) {
     Json::Value root;
     Json::CharReaderBuilder builder;
@@ -23,12 +26,18 @@ Json::Value parseJson(const std::string& json_str) {
 
     return root;
 }
+*/
 
+// Reserved for future HTTP server implementation
+/*
 bool isValidJson(const std::string& json_str) {
     Json::Value root = parseJson(json_str);
     return !root.isNull();
 }
+*/
 
+// Reserved for future HTTP server implementation
+/*
 std::string jsonToString(const Json::Value& json, bool pretty) {
     if (pretty) {
         Json::StreamWriterBuilder builder;
@@ -40,16 +49,20 @@ std::string jsonToString(const Json::Value& json, bool pretty) {
         return Json::writeString(builder, json);
     }
 }
+*/
 
+// Reserved for future HTTP server implementation
+/*
 bool hasRequiredFields(const Json::Value& json, const std::vector<std::string>& fields) {
-    for (const auto& field : fields) {
-        if (!json.isMember(field)) {
-            return false;
-        }
-    }
-    return true;
+    return std::all_of(fields.begin(), fields.end(),
+        [&json](const std::string& field) {
+            return json.isMember(field);
+        });
 }
+*/
 
+// Reserved for future HTTP server implementation
+/*
 bool isValidString(const Json::Value& value, const std::string& field, bool required) {
     if (!value.isMember(field)) {
         return !required;
@@ -57,7 +70,10 @@ bool isValidString(const Json::Value& value, const std::string& field, bool requ
 
     return value[field].isString() && !value[field].asString().empty();
 }
+*/
 
+// Reserved for future HTTP server implementation
+/*
 bool isValidInteger(const Json::Value& value, const std::string& field, bool required) {
     if (!value.isMember(field)) {
         return !required;
@@ -65,7 +81,10 @@ bool isValidInteger(const Json::Value& value, const std::string& field, bool req
 
     return value[field].isInt() || value[field].isUInt() || value[field].isInt64() || value[field].isUInt64();
 }
+*/
 
+// Reserved for future HTTP server implementation
+/*
 Json::Value createErrorResponse(const std::string& message, int code) {
     Json::Value response;
     response["error"] = message;
@@ -76,7 +95,10 @@ Json::Value createErrorResponse(const std::string& message, int code) {
 
     return response;
 }
+*/
 
+// Reserved for future HTTP server implementation
+/*
 Json::Value createSuccessResponse(const std::string& message, const Json::Value& data) {
     Json::Value response;
     response["message"] = message;
@@ -90,7 +112,10 @@ Json::Value createSuccessResponse(const std::string& message, const Json::Value&
 
     return response;
 }
+*/
 
+// Reserved for future HTTP server implementation
+/*
 bool isValidTaskData(const Json::Value& json) {
     // Required field: title
     if (!isValidString(json, "title", true)) {
@@ -122,7 +147,10 @@ bool isValidTaskData(const Json::Value& json) {
 
     return true;
 }
+*/
 
+// Reserved for future HTTP server implementation
+/*
 bool isValidTaskUpdate(const Json::Value& json) {
     // For updates, no field is required, but all present fields must be valid
 
@@ -160,6 +188,7 @@ bool isValidTaskUpdate(const Json::Value& json) {
 
     return true;
 }
+*/
 
 } // namespace json_utils
 } // namespace http_server
