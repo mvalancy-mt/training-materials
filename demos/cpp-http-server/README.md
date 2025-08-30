@@ -26,10 +26,10 @@ graph TB
         M --> P[Graceful Shutdown]
     end
 
-    style A fill:#e1f5fe
-    style E fill:#fff3e0
-    style I fill:#ffebee
-    style M fill:#e8f5e9
+    style A fill:#2196f3,color:#ffffff
+    style E fill:#ff9800,color:#ffffff
+    style I fill:#d32f2f,color:#ffffff
+    style M fill:#2e7d32,color:#ffffff
 ```
 
 ## 🏗️ Features
@@ -69,11 +69,11 @@ graph LR
         I --> O[Statistics]
     end
 
-    style A fill:#e3f2fd
-    style J fill:#4caf50,color:#fff
-    style K fill:#2196f3,color:#fff
-    style L fill:#ff9800,color:#fff
-    style N fill:#9c27b0,color:#fff
+    style A fill:#1976d2,color:#ffffff
+    style J fill:#2e7d32,color:#ffffff
+    style K fill:#1565c0,color:#ffffff
+    style L fill:#f57c00,color:#ffffff
+    style N fill:#7b1fa2,color:#ffffff
 ```
 
 ### Health & Monitoring

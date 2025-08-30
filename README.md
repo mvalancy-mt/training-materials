@@ -21,9 +21,9 @@ graph TB
         I --> L[Branch Protection]
     end
 
-    style A fill:#e1f5fe
-    style E fill:#fff3e0
-    style I fill:#f3e5f5
+    style A fill:#2196f3,color:#ffffff
+    style E fill:#ff9800,color:#ffffff
+    style I fill:#9c27b0,color:#ffffff
 ```
 
 ## 🎯 Purpose & Learning Objectives
@@ -60,9 +60,9 @@ graph LR
         D --> K[Ultra-Strict CI]
     end
 
-    style A fill:#e8f5e9
-    style F1 fill:#c8e6c9
-    style G1 fill:#c8e6c9
+    style A fill:#4caf50,color:#ffffff
+    style F1 fill:#2e7d32,color:#ffffff
+    style G1 fill:#2e7d32,color:#ffffff
 ```
 
 ## 🔄 Git Workflow & CI/CD Pipeline
@@ -138,9 +138,9 @@ flowchart TB
         H -->|Pass| V[Production]
     end
 
-    style D fill:#ff5252
-    style V fill:#4caf50
-    style H fill:#ff9800
+    style D fill:#d32f2f,color:#ffffff
+    style V fill:#2e7d32,color:#ffffff
+    style H fill:#f57c00,color:#ffffff
 ```
 
 ## 📋 Progressive CI/CD Requirements
@@ -160,9 +160,9 @@ graph LR
         B2 --> C2[Zero Vulnerabilities]
     end
 
-    style A fill:#bbdefb
-    style B fill:#90caf9
-    style C fill:#64b5f6
+    style A fill:#1976d2,color:#ffffff
+    style B fill:#1565c0,color:#ffffff
+    style C fill:#0d47a1,color:#ffffff
 ```
 
 | Branch Level | Coverage Required | Security Requirements | Build Time | Deployment Target |
@@ -200,9 +200,9 @@ flowchart LR
         PY --> PY4[OpenAPI Docs]
     end
 
-    style TS1 fill:#4caf50
-    style CPP5 fill:#4caf50
-    style PY1 fill:#ffc107
+    style TS1 fill:#2e7d32,color:#ffffff
+    style CPP5 fill:#2e7d32,color:#ffffff
+    style PY1 fill:#f57c00,color:#ffffff
 ```
 
 ### TypeScript API Demo Details
@@ -239,9 +239,9 @@ flowchart TB
         C --> C3[Read-only Filesystem]
     end
 
-    style A fill:#ffebee
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
+    style A fill:#d32f2f,color:#ffffff
+    style B fill:#f57c00,color:#ffffff
+    style C fill:#2e7d32,color:#ffffff
 ```
 
 ## 🚦 Getting Started
@@ -278,8 +278,8 @@ flowchart LR
     F --> G[7. CI Validation]
     G --> H[8. Merge & Cleanup]
 
-    style B fill:#ff9800
-    style G fill:#2196f3
+    style B fill:#f57c00,color:#ffffff
+    style G fill:#1976d2,color:#ffffff
 ```
 
 ```bash
@@ -414,8 +414,8 @@ graph TD
     H --> I[8. Review C++ Demo]
     I --> J[Advanced: Build Your Own]
 
-    style A fill:#4caf50
-    style J fill:#ff9800
+    style A fill:#2e7d32,color:#ffffff
+    style J fill:#f57c00,color:#ffffff
 ```
 
 ## 🤝 Contributing
