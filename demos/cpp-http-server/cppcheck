@@ -1,0 +1,24 @@
+#!/bin/bash
+# Wrapper script for cppcheck with automatic suppressions
+# This ensures informational warnings don't cause CI failures
+
+# Find real cppcheck binary (skip our wrapper)
+REAL_CPPCHECK=""
+for path in /usr/bin/cppcheck /opt/homebrew/bin/cppcheck $(which cppcheck 2>/dev/null | grep -v "^./cppcheck$"); do
+    if [ -x "$path" ]; then
+        REAL_CPPCHECK="$path"
+        break
+    fi
+done
+
+if [ -z "$REAL_CPPCHECK" ]; then
+    echo "Error: Could not find real cppcheck binary" >&2
+    exit 1
+fi
+
+exec "$REAL_CPPCHECK" \
+  --suppress=missingInclude \
+  --suppress=missingIncludeSystem \
+  --suppress=checkersReport \
+  --suppress=unmatchedSuppression \
+  "$@"

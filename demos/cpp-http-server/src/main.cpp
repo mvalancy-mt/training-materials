@@ -23,7 +23,7 @@ void print_banner() {
     )" << std::endl;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, const char* const argv[]) {
     print_banner();
 
     // Parse command line arguments
