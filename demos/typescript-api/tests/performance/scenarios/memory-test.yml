@@ -1,0 +1,65 @@
+config:
+  target: 'http://localhost:3000'
+  phases:
+    - duration: 300  # 5 minutes for memory leak detection
+      arrivalRate: 30
+      name: "Memory leak detection"
+  processor: "../scripts/performance-processor.js"
+
+scenarios:
+  - name: "Memory Leak Detection Pattern"
+    weight: 100
+    flow:
+      # Pattern that could reveal memory leaks
+      - loop:
+          count: 100
+        flow:
+          # Create large payloads
+          - post:
+              url: "/api/v1/tasks"
+              json:
+                title: "Memory Test {{ $randomString() }}"
+                description: "{{ $randomString() }}{{ $randomString() }}{{ $randomString() }}{{ $randomString() }}{{ $randomString() }}"
+                priority: "medium"
+                status: "pending"
+              capture:
+                - json: "$.data.id"
+                  as: "memoryTaskId"
+              expect:
+                - statusCode: 201
+
+          # Read operations
+          - get:
+              url: "/api/v1/tasks/{{ memoryTaskId }}"
+              expect:
+                - statusCode: 200
+
+          - get:
+              url: "/api/v1/tasks"
+              expect:
+                - statusCode: 200
+
+          # Update with large data
+          - put:
+              url: "/api/v1/tasks/{{ memoryTaskId }}"
+              json:
+                description: "{{ $randomString() }}{{ $randomString() }}{{ $randomString() }}"
+                status: "completed"
+              expect:
+                - statusCode: 200
+
+          # Delete to free memory (if implementation handles it correctly)
+          - delete:
+              url: "/api/v1/tasks/{{ memoryTaskId }}"
+              expect:
+                - statusCode: 204
+
+          - think: 0.1
+
+      # Check health periodically during memory stress
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: [200, 503]
+
+      - think: 1

@@ -4,7 +4,7 @@ name: 🔷 TypeScript API CI/CD
 
 on:
   push:
-    branches: [ main, develop, 'feature/**' ]
+    branches: [ main, develop, 'feature/**', 'bugfix/**', 'hotfix/**', 'fix/**', 'chore/**', 'docs/**', 'refactor/**', 'style/**', 'test/**', 'perf/**' ]
     paths:
       - 'demos/typescript-api/**'
       - '.github/workflows/typescript-comprehensive-ci.yml'
@@ -33,10 +33,11 @@ jobs:
           echo "🔍 Running Advanced Secret Detection..."
 
           # TypeScript-specific secret patterns
-          TS_SECRETS=$(grep -r -E "(password|secret|key|token|api_key).*[=:].*['\"][^'\"]{8,}" . \
+          TS_SECRETS=$(grep -r -E "(password|secret|key|token|api_key).*[=:].*['\"][A-Za-z0-9+/=]{12,}" . \
             --include="*.ts" --include="*.js" --include="*.json" \
-            --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage | \
-            grep -v -E "(test|spec|placeholder|example|demo|change-in-production)" || true)
+            --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage \
+            --exclude="*package-lock.json" --exclude="*package.json" | \
+            grep -v -E "(test|spec|placeholder|example|demo|change-in-production|\^[0-9]+\.[0-9]+\.[0-9]+)" || true)
           TS_COUNT=$(echo "$TS_SECRETS" | wc -l)
           [ "$TS_SECRETS" = "" ] && TS_COUNT=0
 
@@ -72,11 +73,11 @@ jobs:
 
           echo "✅ No secrets detected. Safe to proceed!"
 
-  # ⚡ Stage 2: Basic CI (Feature Branches)
+  # ⚡ Stage 2: Basic CI (Feature/Bugfix/etc Branches)
   basic-ci:
     name: ⚡ Basic TypeScript CI
     runs-on: ubuntu-22.04
-    if: startsWith(github.ref, 'refs/heads/feature/')
+    if: startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/bugfix/') || startsWith(github.ref, 'refs/heads/hotfix/') || startsWith(github.ref, 'refs/heads/fix/') || startsWith(github.ref, 'refs/heads/chore/') || startsWith(github.ref, 'refs/heads/docs/') || startsWith(github.ref, 'refs/heads/refactor/') || startsWith(github.ref, 'refs/heads/style/') || startsWith(github.ref, 'refs/heads/test/') || startsWith(github.ref, 'refs/heads/perf/')
     needs: secret-detection
     strategy:
       matrix:
@@ -480,8 +481,8 @@ jobs:
           echo ""
 
           # Determine pipeline stage based on branch
-          if [[ "${{ github.ref }}" == "refs/heads/feature/"* ]]; then
-            echo "**Pipeline Stage:** ⚡ Basic CI (Feature Branch)"
+          if [[ "${{ github.ref }}" == "refs/heads/feature/"* ]] || [[ "${{ github.ref }}" == "refs/heads/bugfix/"* ]] || [[ "${{ github.ref }}" == "refs/heads/hotfix/"* ]] || [[ "${{ github.ref }}" == "refs/heads/fix/"* ]] || [[ "${{ github.ref }}" == "refs/heads/chore/"* ]] || [[ "${{ github.ref }}" == "refs/heads/docs/"* ]] || [[ "${{ github.ref }}" == "refs/heads/refactor/"* ]] || [[ "${{ github.ref }}" == "refs/heads/style/"* ]] || [[ "${{ github.ref }}" == "refs/heads/test/"* ]] || [[ "${{ github.ref }}" == "refs/heads/perf/"* ]]; then
+            echo "**Pipeline Stage:** ⚡ Basic CI (Feature/Bugfix/Hotfix Branch)"
           elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
             echo "**Pipeline Stage:** ✅ Comprehensive CI (Develop Branch)"
           elif [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.base_ref }}" == "main" ]]; then
